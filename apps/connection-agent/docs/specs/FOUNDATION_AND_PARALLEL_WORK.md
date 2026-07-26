@@ -74,7 +74,31 @@ workloads/connection-embedding/
 
 The five existing product documents are copied into our application folder with their filenames preserved and content verified. Existing shared or team-authored documents are not renamed or rewritten as part of that copy.
 
-## 4. Foundation that precedes the session split
+## 4. Provider-neutral application rule
+
+Connection Agent is our deployable product; JacGrid is one replaceable embedding-compute provider. The product must be able to run on ordinary application hosting while calling whichever compute adapter is configured.
+
+```text
+Connection Agent core
+        │
+        ▼
+EmbeddingCompute interface
+        ├── MockJacGrid / local workload adapter
+        ├── LiveJacGrid adapter
+        └── future conventional-cloud adapter
+```
+
+Only the adapter understands provider-specific endpoints, credentials, job IDs, polling, receipts, or error translation. Profiles, candidate retrieval, ranking, pair assessment, cards, consent, matches, and chat never import a JacGrid, AWS, Render, worker, or sandbox implementation type.
+
+The application can therefore be hosted on a conventional service while:
+
+- using local execution during development;
+- using JacGrid for the distributed demo or production compute;
+- using a future conventional cloud executor if JacGrid is unavailable or not selected.
+
+Provider portability does not require us to implement every adapter during foundation. It requires one internal `EmbeddingCompute` interface, provider-neutral tests, and no provider-specific assumptions in product logic. The same immutable `connection-embedding` package and input/output schemas are reused by every executor.
+
+## 5. Foundation that precedes the session split
 
 The orchestration agent completes and merges these items in order:
 
@@ -128,13 +152,14 @@ Implement [`WALKING_SKELETON.md`](WALKING_SKELETON.md) through the shared applic
 3. workload schema, fixture, and local-runner tests;
 4. application unit tests;
 5. the mock walking-skeleton scenario;
-6. checks that our code does not import platform or sandbox implementation modules.
+6. adapter contract tests proving the same fixture request/result can cross local and recorded live-provider adapters;
+7. checks that product code does not import provider, platform, worker, or sandbox implementation modules.
 
 The command returns nonzero on any failure. The orchestration agent may add a path-filtered CI job that invokes this command, but our implementation agents do not edit shared CI independently.
 
 **Exit:** every new worktree runs the same fast pre-merge command successfully.
 
-## 5. Parallel objectives after foundation
+## 6. Parallel objectives after foundation
 
 After F0–F4 are merged, separate Codex sessions may own these objectives:
 
@@ -148,7 +173,7 @@ After F0–F4 are merged, separate Codex sessions may own these objectives:
 
 An objective can contain a sequence of smaller specs. The objective owner works through those specs in order on its own branch and worktree.
 
-## 6. Shared-path ownership during parallel work
+## 7. Shared-path ownership during parallel work
 
 The orchestration agent remains responsible for:
 
@@ -162,7 +187,7 @@ The orchestration agent remains responsible for:
 
 If an objective needs a contract change, its session stops at the boundary, proposes the smallest change, and continues only after the orchestration agent releases the revised contract. It does not edit the shared contract opportunistically.
 
-## 7. Git and worktree rules
+## 8. Git and worktree rules
 
 - Every active objective uses its own branch and worktree; separate sessions never share one checked-out directory.
 - Branches start from the same tested foundation commit.
@@ -171,15 +196,16 @@ If an objective needs a contract change, its session stops at the boundary, prop
 - No objective merges directly to `main`; the orchestration agent reviews scope, checks, and integration order.
 - Another workstream's files are not changed to make our tests pass. Their service is represented by the accepted boundary contract and our fake adapter.
 
-## 8. Configuration and safety
+## 9. Configuration and safety
 
 - Commit safe examples only; never commit credentials, service-role keys, phone-provider secrets, JacGrid credentials, wallet keys, or private model tokens.
 - Browser code never receives server credentials.
+- Deployment configuration selects an embedding-compute adapter and endpoint; changing providers does not change application core code or persisted product semantics.
 - Fixture identity and reset functionality are local/test-only and fail closed against production-marked services.
 - Synthetic fixture profiles are used for local and distributed-compute tests unless a person explicitly approves their profile text for that purpose.
 - Production data is never copied to workers or committed as a fixture.
 
-## 9. Acceptance criteria
+## 10. Acceptance criteria
 
 The parallel foundation is ready when:
 
@@ -190,9 +216,11 @@ The parallel foundation is ready when:
 - `MockJacGrid` and the fake repositories satisfy those interfaces.
 - The complete walking skeleton passes.
 - `./apps/connection-agent/scripts/check.sh` passes in a clean worktree and catches a deliberately broken invariant.
+- The application starts without the JacGrid source tree and completes the fixture flow through the local adapter.
+- The same recorded embedding request/result passes contract tests through local, JacGrid, and future provider-adapter boundaries without changing product logic.
 - Every parallel objective has explicit writable paths and an ordered starting spec.
 - The two external boundaries we participate in are accepted or represented by recorded fakes; no agent depends on Phong-to-Luke/Santhos internals.
 
-## 10. Out of scope
+## 11. Out of scope
 
 This foundation does not implement or prescribe coordinator scheduling, JacGrid task graphs, worker registration, worker heartbeats, retries inside the platform, payment, reputation, dashboard behavior, sandbox isolation, allowlist storage, resource enforcement, or the task protocol between Phong and Luke/Santhos.

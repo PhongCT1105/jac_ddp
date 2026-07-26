@@ -10,7 +10,7 @@
 
 Prove one complete Connection Agent state transition before production persistence, live LLM calls, a live JacGrid coordinator, worker machines, or polished UI exist.
 
-The skeleton uses the real application operation boundaries with deterministic in-memory adapters. Replacing an adapter later must not require rewriting the product flow.
+The skeleton uses the real application operation boundaries with deterministic in-memory adapters. Replacing an adapter later—or hosting the application on a different conventional provider—must not require rewriting the product flow.
 
 ## 2. Demo flow
 
@@ -166,7 +166,7 @@ Given 30 or more fixture profiles and no external services:
 
 ## 11. Exit condition
 
-The walking skeleton is complete when the full scenario passes entirely through released contracts and application operations, and swapping in a future Supabase repository or `LiveJacGrid` adapter requires no change to the scenario's product rules.
+The walking skeleton is complete when the full scenario passes entirely through released contracts and application operations, and swapping in a future Supabase repository, `LiveJacGrid`, or another compatible compute adapter requires no change to the scenario's product rules.
 
 ## 12. Out of scope
 

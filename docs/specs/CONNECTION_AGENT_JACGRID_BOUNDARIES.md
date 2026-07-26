@@ -38,6 +38,20 @@ Inside their respective borders:
 
 Only the payloads that cross Boundary A or Boundary B require joint agreement.
 
+### Portability test
+
+Boundary A is an external-provider adapter, not an application-core interface. Our application core depends on a provider-neutral `EmbeddingCompute` operation. `LiveJacGrid` maps that operation to Boundary A; `MockJacGrid` maps it to the local workload harness; a future conventional-cloud adapter may map it to another job service.
+
+The boundary is correctly isolated when all of these are true:
+
+- Connection Agent can be deployed on ordinary application hosting without installing or importing JacGrid's platform source.
+- Selecting local, JacGrid, or another compute provider is configuration plus an adapter, not a rewrite of matching behavior.
+- Every provider runs the same versioned `connection-embedding` package or returns output proven compatible with its exact schemas, model identity, and invariants.
+- Supabase remains the canonical product store regardless of compute provider.
+- A compute-provider outage changes embedding job state and retry behavior, not consent, match, thread, or message semantics.
+
+Foundation does not need to deploy every provider. The local adapter plus recorded Boundary A fixtures prove the separation; a live JacGrid run proves the first external integration.
+
 ## 3. Correction to the earlier ranking proposal
 
 The root `CONNECTION_APP_JACMARKET_API_CONTRACT.md` describes an earlier candidate-ranking workload. The accepted ownership decision changed the first workload to embedding generation:
@@ -345,6 +359,8 @@ Acceptance requires:
 4. Luke/Santhos can invoke the unchanged workload package using the agreed transport.
 5. Local, sandboxed, and distributed runs produce contract-compatible vectors within the declared tolerance.
 6. Our tests never require access to Phong's or Luke/Santhos's implementation modules.
+7. Connection Agent runs on conventional application hosting with the compute endpoint supplied by configuration.
+8. Replacing `LiveJacGrid` with the local adapter requires no changes to profiles, retrieval/ranking, consent, matches, threads, messages, or Supabase records.
 
 ## 8. Non-goals
 
