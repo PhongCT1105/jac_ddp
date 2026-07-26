@@ -222,6 +222,8 @@ The application checks these results before saving anything or showing a card.
 
 Supabase stores phone accounts, Markdown profiles, embeddings, decisions, matches, threads, and messages. It also handles row-level security and realtime chat.
 
+The connection-app team supplies a versioned embedding workload. JacGrid distributes executions of that workload across worker computers, and the Luke/Santhos sandbox runs it safely. JacGrid returns verified vectors; Supabase stores them, and our Jac matching logic still builds the candidate graph, assesses pairs, and creates cards.
+
 The web client displays the conversation, profile proposals, cards, phone login, and private human chat.
 
 Jac handles the candidate graph, traversal, pair assessment, card content, and matching workflow. Supabase remains the database for durable user data.

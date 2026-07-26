@@ -1,6 +1,6 @@
 # JacGrid Architecture
 
-This document defines the system architecture shared by all three workstreams: the components, the Jac graph model, the walkers, and — most importantly — the two API contracts that let Phong, Luke, and Sebastian build in parallel.
+This document defines the system architecture shared by all three workstreams: the components, the Jac graph model, the walkers, and the contracts that let Phong, Luke/Santhos, and Sebastian build in parallel.
 
 ---
 
@@ -10,14 +10,15 @@ JacGrid has three layers, each owned by one person:
 
 | Layer | Owner | Responsibility |
 |---|---|---|
-| Application | Sebastian | A real product (the matching app) that consumes the network by submitting jobs |
+| Application + workload | Sebastian | The matching product plus the versioned application-specific computation its jobs run |
 | Distributed compute | Phong | Coordinator + workers: job lifecycle, scheduling, monitoring, recovery, verification, payment |
-| Sandbox | Luke | Safe, restricted execution of task workloads on each worker Mac |
+| Sandbox | Luke/Santhos | Generic, safe execution of approved workload packages on each worker Mac |
 
-The layers communicate only through two contracts:
+The layers communicate through three contracts:
 
 1. **Job Submission API** — between the application and the coordinator (HTTP/JSON).
 2. **Task Execution API** — between the worker runtime and the sandbox (local process interface).
+3. **Application Workload Contract** — the versioned program Sebastian supplies and the Luke/Santhos sandbox invokes.
 
 Everything inside a layer can change freely; the contracts cannot change without all three agreeing.
 
@@ -172,7 +173,7 @@ Optional for the demo, nice to have: `POST /api/jobs/{job_id}/webhook` for push 
 
 ## 5. Contract B — Task Execution API
 
-**Between:** worker runtime (Phong) → sandbox (Luke). A local interface on each worker Mac: the worker hands the sandbox a task envelope, the sandbox returns a result envelope. Implementation detail (subprocess + JSON files, or a local socket) is Luke's choice, but the envelope shapes are fixed.
+**Between:** worker runtime (Phong) → sandbox (Luke/Santhos). A local interface on each worker Mac: the worker hands the sandbox a task envelope, the sandbox returns a result envelope. Implementation detail (subprocess + JSON files, or a local socket) is a Luke/Santhos implementation choice, but the envelope shapes are fixed.
 
 ### Task envelope (worker → sandbox)
 
@@ -215,16 +216,24 @@ Rules:
 
 ---
 
-## 6. End-to-end data flow
+## 6. Contract C — Application Workload Contract
+
+Sebastian supplies the immutable `connection-embedding` workload: entrypoint, model revision, dependencies, input/output schemas, resource requirements, verification tolerance, and fixtures. Phong schedules and verifies executions of that package. Luke/Santhos install, allowlist, and safely invoke it. Phong and Luke/Santhos do not maintain separate embedding algorithms.
+
+See `workload-ownership-decision.md` for the reasoning and exact ownership boundary.
+
+---
+
+## 7. End-to-end data flow
 
 ```text
  1. Matching app POSTs an embedding job (100 profiles)          [Sebastian → Contract A]
  2. create_job + split_job walkers → 4 Tasks of 25 items        [Phong]
  3. select_worker + assign_task dispatch tasks to Mac 1/2/3     [Phong]
  4. Worker runtime hands each task envelope to the sandbox      [Phong → Contract B]
- 5. Sandbox runs the allowlisted embedding runner under limits  [Luke]
- 6. Result envelopes return to the coordinator                  [Luke → Phong]
- 7. verify_result recomputes a 10% sample and compares          [Phong]
+ 5. Sandbox runs Sebastian's allowlisted workload under limits [Luke/Santhos]
+ 6. Result envelopes return to the coordinator                  [Luke/Santhos → Phong]
+ 7. verify_result reuses the same workload on a 10% sample      [Phong]
  8. release_payment pays each verified task's worker (testnet)  [Phong]
  9. Matching app fetches combined embeddings + payment receipt  [Phong → Sebastian]
 10. Matching app computes similarity and shows matches          [Sebastian]
@@ -234,7 +243,7 @@ Failure path: if a worker dies mid-task, `detect_failure` marks the attempt fail
 
 ---
 
-## 7. Verification methods (hackathon set)
+## 8. Verification methods (hackathon set)
 
 | Method | How it works | Good for |
 |---|---|---|
@@ -247,7 +256,7 @@ Failure path: if a worker dies mid-task, `detect_failure` marks the attempt fail
 
 ---
 
-## 8. Payment model
+## 9. Payment model
 
 - Each worker Mac has a testnet wallet (or a simulated ledger — see decision below).
 - `price_per_task` is fixed at submission; it cannot change after a worker accepts.
@@ -258,7 +267,7 @@ Failure path: if a worker dies mid-task, `detect_failure` marks the attempt fail
 
 ---
 
-## 9. Out of scope (hackathon)
+## 10. Out of scope (hackathon)
 
 - Public device onboarding, Sybil resistance, escrow, disputes
 - Arbitrary user-submitted code (only allowlisted `job_type`s run)

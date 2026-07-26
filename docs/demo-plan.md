@@ -12,7 +12,7 @@ Total target time: **4 minutes** plus Q&A.
 - [ ] Mac 2: worker + sandbox running, terminal visible
 - [ ] Mac 3: worker + sandbox running, terminal visible
 - [ ] All three registered and showing **online** on the dashboard
-- [ ] Matching app seeded with ~100 profiles (pre-written, believable)
+- [ ] Matching app seeded with ~100 synthetic or explicitly approved profiles (pre-written, believable)
 - [ ] Wallet balances visible (before-state screenshot as backup)
 - [ ] A rehearsed way to kill the Mac 2 worker (`Ctrl-C` in its terminal)
 - [ ] Backup: screen recording of a successful full run, in case of network issues
@@ -47,7 +47,7 @@ Task t-1 → Mac 1    Task t-2 → Mac 2
 Task t-3 → Mac 3    Task t-4 → queued
 ```
 
-Say: "The app doesn't manage machines, retries, or payments. It submits a job and gets results — JacGrid does everything else, and the whole control plane is a Jac graph driven by walkers."
+Say: "Our app supplies the embedding workload but doesn't manage machines, retries, or payments. It submits a job and gets results — JacGrid handles distributed execution, and the whole control plane is a Jac graph driven by walkers."
 
 ### Beat 3 — Kill a worker live (45s)
 
