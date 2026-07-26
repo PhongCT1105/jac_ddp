@@ -1,10 +1,11 @@
 {
   "name": "connection-embedding",
   "version": "1.0.0",
+  "entrypoint": "src/embed.jac",
   "owner": "connection-agent app team (docs/workload-ownership-decision.md)",
   "job_type": "embedding",
   "runtime": "jac",
-  "entrypoint": "src/embed.jac",
+
   "invocation": {
     "convention": "file-io",
     "description": "Caller sets JACGRID_WORKDIR to a directory containing task.json (Contract B task envelope) and runs `jac run src/embed.jac`. Per docs/luke-sandbox/spec.md §3: on success the entrypoint writes ONLY the output object — {\"results\": [...]} — to result.json and exits 0; the SANDBOX (not this workload) wraps that with execution metadata into the full Contract B result envelope. On any failure, result.json is NOT written, an error is printed, and the process exits non-zero — the sandbox's own 'runner exits non-zero / bad output -> error' path builds the error envelope from that. Mirrors sandbox/runners/noop.jac's convention (which also writes only its bare output, e.g. {\"echo\": ...}, never a full envelope).",
@@ -12,87 +13,69 @@
     "on_success": "result.json = {\"results\": [{\"id\": ..., \"embedding\": [...]}]}, exit 0",
     "on_failure": "result.json NOT written, stderr has a human-readable message, exit code != 0"
   },
+
   "model": {
-    "family": "sentence-transformers",
     "name": "all-MiniLM-L6-v2",
+    "family": "sentence-transformers",
     "hf_repo": "sentence-transformers/all-MiniLM-L6-v2",
     "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+    "artifact_hash": "sha256:53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db",
+    "artifact_hash_of": "model.safetensors in the pinned revision's snapshot (the primary weight file; the full snapshot is pinned via `revision`, which is what src/embed.jac actually passes to SentenceTransformer(..., revision=...))",
     "embedding_dim": 384,
     "normalization": "L2 (normalize_embeddings=True at encode time)",
     "precision": "float32, cast to Python float before serialization"
   },
+
   "dependencies": {
     "sentence-transformers": "5.6.1",
     "torch": "2.13.0",
     "numpy": "2.5.1",
     "python": "3.12"
   },
+
   "runtime_versions": {
     "primary": "connection-embedding:1.0.0",
     "fallback": "connection-embedding-fallback:1.0.0",
     "fallback_trigger": "sentence-transformers import failure, model load failure, or any exception during encode() — the workload always produces contract-shaped `results`, whichever path ran.",
     "fallback_scheme": "deterministic seeded SHA-256 bag-of-words hash, L2-normalized, 384-d (same dimensionality as the primary model so downstream consumers never branch on it)",
-    "visibility": "the on-disk result.json (this workload's output-only contract) does NOT carry this tag — only `results`. Which runtime actually ran is printed to stderr (\"connection-embedding: ok, runtime=...\") for operator/log visibility; the sandbox's own execution.runtime in the wrapped envelope reflects the allowlisted workload id it invoked (connection-embedding@1.0.0), not this internal primary/fallback distinction. Known limitation for this hackathon iteration — flagged in the app's report."
+    "visibility": "the on-disk result.json (this workload's output-only contract) does NOT carry this tag — only `results`. Which runtime actually ran is printed to stderr (\"connection-embedding: ok, runtime=...\") for operator/log visibility; the sandbox's runtime_tag (name:version from this manifest, per sandbox/runner/registry.jac) reflects the allowlisted workload id it invoked, not this internal primary/fallback distinction. Known limitation for this hackathon iteration — flagged in the app's report."
   },
+
   "input_schema": {
-    "description": "Contract B task envelope (docs/architecture.md §5)",
-    "type": "object",
-    "required": ["task_id", "job_type", "payload"],
-    "properties": {
-      "task_id": {"type": "string"},
-      "job_type": {"const": "embedding"},
-      "payload": {
-        "type": "object",
-        "required": ["items"],
-        "properties": {
-          "model": {"type": "string", "description": "informational only — this workload always runs its own pinned model/revision"},
-          "items": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "type": "object",
-              "required": ["id", "text"],
-              "properties": {
-                "id": {"type": "string"},
-                "text": {"type": "string"}
-              }
-            }
-          }
-        }
-      },
-      "limits": {
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
         "type": "object",
         "properties": {
-          "cpu_seconds": {"type": "number"},
-          "memory_mb": {"type": "number"},
-          "wall_seconds": {"type": "number"},
-          "network": {"const": "none", "description": "the workload forces HF_HUB_OFFLINE=1 / TRANSFORMERS_OFFLINE=1 and never fetches weights at task time"}
-        }
+          "id": {"type": "string"},
+          "text": {"type": "string"}
+        },
+        "required": ["id", "text"]
       }
-    }
+    },
+    "model": {"type": "string", "description": "informational only — this workload always runs its own pinned model/revision"}
   },
+
   "output_schema": {
-    "description": "The `output` object this workload writes to result.json on success (per docs/luke-sandbox/spec.md §3) — NOT the full Contract B result envelope. The sandbox harness wraps this with task_id/status/execution/error itself; this workload never writes those fields.",
-    "type": "object",
-    "required": ["results"],
-    "properties": {
-      "results": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": ["id", "embedding"],
-          "properties": {
-            "id": {"type": "string"},
-            "embedding": {"type": "array", "items": {"type": "number"}, "minItems": 384, "maxItems": 384}
-          }
-        }
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "embedding": {"type": "array", "items": {"type": "number"}, "minItems": 384, "maxItems": 384}
+        },
+        "required": ["id", "embedding"]
       }
     }
   },
+
   "on_failure_contract": {
     "description": "On failure this workload writes NO result.json at all and exits non-zero (stderr carries the reason) — it does not attempt to construct any part of the Contract B envelope. See docs/luke-sandbox/spec.md §3's Failure mapping table for how the sandbox turns that into a result envelope.",
     "run_task_error_codes": ["unsupported_job_type", "empty_items", "invalid_item", "exception"]
   },
+
   "resource_requirements": {
     "cpu_seconds": 120,
     "memory_mb": 2048,
@@ -100,28 +83,30 @@
     "network": "none",
     "notes": "matches docs/architecture.md §5's example task-envelope limits; measured actual usage on the reference fixture (3 items) was ~500MB peak RSS / ~2.6 cpu_seconds on the primary model path on this dev machine."
   },
+
   "verification": {
+    "tolerance": 0.001,
     "method": "recompute_sample",
     "sample_rate": 0.1,
-    "tolerance": {
-      "metric": "cosine_similarity_min",
-      "threshold": 0.999,
-      "rationale": "the pinned model + normalize_embeddings=True is deterministic per-machine, but float32 BLAS reductions can differ in the last few bits across CPU/GPU backends (MPS vs CPU vs different worker hardware); 0.999 cosine similarity comfortably separates 'same embedding, different hardware' from 'wrong embedding'. Exact bit-for-bit equality is NOT the bar."
-    },
+    "tolerance_metric": "cosine_similarity_min",
+    "tolerance_threshold": 0.999,
+    "tolerance_rationale": "the pinned model + normalize_embeddings=True is deterministic per-machine, but float32 BLAS reductions can differ in the last few bits across CPU/GPU backends (MPS vs CPU vs different worker hardware); 0.999 cosine similarity (equivalently, ~0.001 max per-pair distance, matching the flat `tolerance` field above) comfortably separates 'same embedding, different hardware' from 'wrong embedding'. Exact bit-for-bit equality is NOT the bar.",
     "runtime_mismatch_policy": "if a recompute lands on the fallback runtime while the original ran on the primary model (or vice versa), verification MUST fail regardless of similarity score — the two schemes are not expected to agree."
   },
-  "fixtures": [
-    {
+
+  "fixtures": {
+    "task_embedding_3profiles": {
       "task": "tests/fixtures/task-embedding.json",
       "expected_primary": "tests/fixtures/expected-model.json",
       "expected_fallback": "tests/fixtures/expected-fallback.json",
+      "expected_embedding_length": 384,
       "description": "3 short bio-style texts. expected_primary was generated once by running this exact entrypoint against the pinned model/revision offline; expected_fallback is independently computed in Python from the same hash formula as _hash_embed and must match exactly (deterministic, no model involved)."
     },
-    {
+    "task_bad_job_type": {
       "task": "tests/fixtures/task-bad-job-type.json",
       "expected_status": "error",
       "expected_error_code": "unsupported_job_type",
-      "description": "job_type outside this workload's allowlist must fail fast with a Contract-B-shaped error result, not raise."
+      "description": "job_type outside this workload's allowlist must fail fast (non-zero exit, no result.json), not raise or hang."
     }
-  ]
+  }
 }
