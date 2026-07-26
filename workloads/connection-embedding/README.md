@@ -19,17 +19,21 @@ the coordinator/verifier can tell which path actually ran.
 
 ## Invocation contract
 
-Mirrors the file-I/O convention already used by `sandbox/runners/noop.jac`
-and follows `docs/luke-sandbox/spec.md` §3 exactly: **the runner writes only
-the `output` object; the sandbox is what wraps it into the full Contract B
-result envelope.** This workload does not construct `task_id`/`status`/
-`execution`/`error` on disk at all.
+Mirrors the file-I/O convention already used by the noop fixture and follows
+`docs/luke-sandbox/spec.md` §3: the runner writes application output plus one
+reserved workload-to-sandbox metadata object; the sandbox is what wraps it
+into the full Contract B result envelope. This workload does not construct
+`task_id`/`status`/`execution`/`error` on disk.
 
 1. Caller creates a scratch directory and writes a Contract B task envelope
    (`docs/architecture.md` §5) to `<workdir>/task.json`.
 2. Caller sets `JACGRID_WORKDIR=<workdir>` and runs `jac run src/embed.jac`.
-3. **On success:** entrypoint writes `{"results": [{"id": ..., "embedding": [...]}]}`
-   — and only that — to `<workdir>/result.json`, exits 0.
+3. **On success:** entrypoint writes
+   `{"results": [...], "__jacgrid_execution": {"runtime": "..."}}` to
+   `<workdir>/result.json`, exits 0. The generic sandbox accepts the runtime
+   only if this immutable manifest declares it in `runtime_tags`, promotes it
+   to Contract B `execution.runtime`, and removes the reserved object before
+   returning application output.
 4. **On failure:** entrypoint writes NOTHING to `result.json`, prints a
    human-readable reason to stderr, exits non-zero. The sandbox's own
    "runner exits non-zero / bad output → `status: error`" path (spec §3's
@@ -44,7 +48,7 @@ cat > /tmp/work/task.json <<'EOF'
              "items": [{"id": "profile-001", "text": "ML engineer who loves climbing"}]}}
 EOF
 JACGRID_WORKDIR=/tmp/work ../../.venv/bin/jac run src/embed.jac
-cat /tmp/work/result.json   # {"results": [{"id": "profile-001", "embedding": [...]}]}
+cat /tmp/work/result.json   # {"results": [...], "__jacgrid_execution": {"runtime": "..."}}
 ```
 
 The entrypoint forces `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` itself
@@ -53,21 +57,17 @@ never phones home even if the sandbox doesn't set those env vars.
 
 `run_task(task: dict) -> dict` in `src/embed.jac` is the pure, file-I/O-free
 core and still returns the FULL internal envelope shape (`task_id`,
-`status`, `output`, `execution`, `error`) — that's what the 6 tests below
+`status`, `output`, `execution`, `error`) — that's what the 7 tests below
 exercise directly, and what any future in-process caller (recompute-sample
 verification) should call instead of shelling out. The
 `with entry:__main__` block is the only place that narrows `run_task`'s
-result down to the on-disk output-only contract described above.
+result down to the on-disk contract described above.
 
-**Known limitation:** because the on-disk contract only carries `results`,
-the primary-vs-fallback runtime distinction (`connection-embedding:1.0.0`
-vs `connection-embedding-fallback:1.0.0`) doesn't reach the sandbox's
-wrapped envelope — it's only visible via a stderr line
-(`connection-embedding: ok, runtime=...`). The sandbox's own
-`execution.runtime` will reflect whichever workload id it invoked from its
-allowlist registry, not which internal code path actually ran. Flagged for
-Phong/Luke-Santhos as a follow-up if the demo wants that distinction
-visible in the audit trail.
+The primary-vs-fallback distinction survives the file-I/O boundary in
+`__jacgrid_execution.runtime`. The sandbox validates it against this
+manifest's `runtime_tags`, promotes it, and strips the reserved object. A
+workload cannot spoof an arbitrary runtime, and reserved metadata never
+reaches result consumers.
 
 ## Manifest
 
@@ -85,7 +85,7 @@ is not the bar), and fixture references.
 ../../.venv/bin/jac test src/embed.jac -v
 ```
 
-6 tests, all pure-function (no file I/O, no coordinator, no sandbox):
+7 tests, all pure-function (no file I/O, no coordinator, no sandbox):
 
 - Fallback hash embeddings match an independently-computed golden fixture
   exactly (cosine > 0.999999) — proves the deterministic scheme really is
@@ -94,6 +94,8 @@ is not the bar), and fixture references.
   Contract-B-shaped `status: "error"` results instead of raising.
 - A full 3-item task produces a contract-shaped `status: "ok"` envelope
   with 384-d embeddings and a complete `execution` block.
+- The file-output adapter carries actual runtime provenance only in the
+  reserved workload-to-sandbox metadata object.
 - If the primary model path ran, its output matches a golden fixture
   (generated once via this exact entrypoint against the pinned
   model/revision) within the declared verification tolerance.

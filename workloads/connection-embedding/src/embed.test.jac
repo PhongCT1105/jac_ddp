@@ -102,6 +102,20 @@ test "run_task produces a contract-shaped result envelope with 384-d embeddings"
 }
 
 
+test "file output carries only application results plus reserved runtime provenance" {
+    task = _load_fixture("task-embedding.json");
+    result = run_task(task);
+    file_output = _file_output(result);
+
+    assert "results" in file_output;
+    assert "task_id" not in file_output;
+    assert "status" not in file_output;
+    assert "execution" not in file_output;
+    assert "__jacgrid_execution" in file_output;
+    assert file_output["__jacgrid_execution"]["runtime"] == result["execution"]["runtime"];
+}
+
+
 test "primary model path matches the golden fixture within verification tolerance" {
     task = _load_fixture("task-embedding.json");
     result = run_task(task);

@@ -130,21 +130,56 @@ def _sandbox_run_inner(
         );
     }
 
+    pinned_raw = task_envelope.get("workload", None);
+    if not isinstance(pinned_raw, dict) {
+        finished_at = iso_now();
+        return make_envelope(
+            task_id, "error", None,
+            "task envelope missing pinned workload identity",
+            workload.runtime_tag, started_at, finished_at, 0.0, 0.0, -1,
+        );
+    }
+    pinned = pinned_raw as dict[str, any];
+    pinned_id = str(pinned.get("id", ""));
+    pinned_version = str(pinned.get("version", ""));
+    pinned_digest = str(pinned.get("manifest_sha256", ""));
+    pinned_package_digest = str(pinned.get("package_sha256", ""));
+    if (pinned_id != workload.workload_id
+        or pinned_version != workload.version
+        or pinned_digest != workload.manifest_sha256
+        or pinned_package_digest != workload.package_sha256) {
+        finished_at = iso_now();
+        return make_envelope(
+            task_id, "error", None,
+            "pinned workload package does not match the current allowlist/package: "
+            + f"pinned={pinned_id}:{pinned_version}"
+            + f"@manifest={pinned_digest}@package={pinned_package_digest}, "
+            + f"resolved={workload.workload_id}:{workload.version}"
+            + f"@manifest={workload.manifest_sha256}@package={workload.package_sha256}",
+            workload.runtime_tag, started_at, finished_at, 0.0, 0.0, -1,
+        );
+    }
+
     limits_raw = task_envelope.get("limits", {});
     limits: dict[str, any] = {};
     if isinstance(limits_raw, dict) {
         limits = limits_raw as dict[str, any];
     }
 
-    wall_seconds: float = float(
-        limits.get("wall_seconds", workload.resource_defaults.get("wall_seconds", DEFAULT_WALL_SECONDS)) as int
-    );
-    cpu_seconds_limit: float = float(
-        limits.get("cpu_seconds", workload.resource_defaults.get("cpu_seconds", DEFAULT_CPU_SECONDS)) as int
-    );
-    memory_mb_limit: float = float(
-        limits.get("memory_mb", workload.resource_defaults.get("memory_mb", DEFAULT_MEMORY_MB)) as int
-    );
+    # `as float` (a compile-time-only cast), not `float(... as int)` — limits
+    # arriving from JSON may legitimately be floats (e.g. `"wall_seconds":
+    # 15.5`); casting through `int` first was a checker-satisfying trick that
+    # happened to work at runtime (the erased cast never truncates), but it
+    # mis-declared the value's type. Cast straight to float instead.
+    wall_seconds: float = limits.get(
+        "wall_seconds", workload.resource_defaults.get("wall_seconds", DEFAULT_WALL_SECONDS)
+    ) as float;
+    cpu_seconds_limit: float = limits.get(
+        "cpu_seconds", workload.resource_defaults.get("cpu_seconds", DEFAULT_CPU_SECONDS)
+    ) as float;
+    memory_mb_limit: float = limits.get(
+        "memory_mb", workload.resource_defaults.get("memory_mb", DEFAULT_MEMORY_MB)
+    ) as float;
 
     workdir = os.path.join(WORK_ROOT, f"{task_id}-{uuid.uuid4().hex[:8]}");
     try {
@@ -159,6 +194,7 @@ def _sandbox_run_inner(
         tf.close();
     } except Exception as e {
         finished_at = iso_now();
+        _wipe_workdir(workdir);
         return make_envelope(
             task_id, "error", None, f"failed to prepare workdir: {str(e)}",
             workload.runtime_tag, started_at, finished_at, 0.0, 0.0, -1,
@@ -173,10 +209,8 @@ def _sandbox_run_inner(
         command: list[str] = base_cmd;
         if seatbelt_on and os.path.isfile(SEATBELT_PROFILE) {
             real_workdir = os.path.realpath(workdir);
-            command = [
-                "sandbox-exec", "-D", f"WORKDIR={real_workdir}",
-                "-f", SEATBELT_PROFILE,
-            ] + base_cmd;
+            seatbelt_cmd: list[str] = ["sandbox-exec", "-D", f"WORKDIR={real_workdir}", "-f", SEATBELT_PROFILE];
+            command = seatbelt_cmd + base_cmd;  # jac:ignore[W2003] -- false positive: read below by run_subprocess(command, ...)
         }
 
         run_env: dict[str, str] = dict(os.environ);
@@ -184,7 +218,7 @@ def _sandbox_run_inner(
         run_env["JACGRID_TASK_ID"] = task_id;
 
         result_partial = run_subprocess(
-            command, workdir, run_env, workload.runtime_tag,
+            command, workdir, run_env, workload.runtime_tag, workload.runtime_tags,
             wall_seconds, cpu_seconds_limit, memory_mb_limit,
         );
     } except Exception as e {

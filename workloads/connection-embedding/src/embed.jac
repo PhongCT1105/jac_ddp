@@ -9,10 +9,11 @@ sandbox/runners/noop.jac, so the generic sandbox can invoke this workload
 exactly like any other approved job_type — and per docs/luke-sandbox/spec.md
 §3): the caller sets JACGRID_WORKDIR to a work directory containing
 `task.json` (a Contract B task envelope, docs/architecture.md §5). On
-success this entrypoint writes ONLY the `output` object —
-`{"results": [{"id": ..., "embedding": [...]}]}` — to `result.json` and
-exits 0; the sandbox harness is what wraps that with execution metadata
-into the full Contract B result envelope. On failure, nothing is written
+success this entrypoint writes application output plus reserved
+`__jacgrid_execution.runtime` to `result.json`; the generic sandbox validates
+that runtime against the immutable manifest, strips the reserved object, and
+wraps the output with execution metadata into the full Contract B result
+envelope. On failure, nothing is written
 to result.json, an error is printed, and the process exits non-zero — the
 sandbox's own "runner exits non-zero" path builds the `error` envelope
 from that (see the spec's Failure mapping table).
@@ -46,6 +47,7 @@ glob MODEL_REVISION: str = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41";
 glob EMBED_DIM: int = 384;
 glob RUNTIME_PRIMARY: str = "connection-embedding:1.0.0";
 glob RUNTIME_FALLBACK: str = "connection-embedding-fallback:1.0.0";
+glob RESERVED_EXECUTION_METADATA_FIELD: str = "__jacgrid_execution";
 
 # Task limits declare `network: "none"` (Contract B) — force huggingface_hub
 # to serve the pinned revision straight from the local cache and skip its
@@ -224,10 +226,32 @@ def run_task(task: dict[str, any]) -> dict[str, any] {
 }
 
 
+"""Narrow the internal Contract B envelope to the workload file-I/O shape.
+
+The reserved metadata field is consumed by the generic sandbox only. The
+sandbox accepts its runtime tag only when the immutable workload manifest
+declares that tag, promotes it to Contract B `execution.runtime`, and removes
+the reserved field before returning application output.
+"""
+def _file_output(result: dict[str, any]) -> dict[str, any] {
+    output = result["output"] as dict[str, any];
+    file_output: dict[str, any] = {};
+    for (key, value) in output.items() {
+        file_output[str(key)] = value;
+    }
+    execution = result["execution"] as dict[str, any];
+    file_output[RESERVED_EXECUTION_METADATA_FIELD] = {
+        "runtime": str(execution["runtime"]),
+    };
+    return file_output;
+}
+
+
 """File-I/O entrypoint invoked by the sandbox. Per docs/luke-sandbox/spec.md
-§3, the RUNNER writes only the `output` part to result.json — the sandbox
-wraps it with execution metadata (runtime, timings, peak memory, exit
-code) into the full Contract B result envelope itself, and derives
+§3, the RUNNER writes application output plus the reserved actual-runtime
+provenance object to result.json — the sandbox validates/promotes that runtime,
+strips the reserved object, wraps output with execution metadata (runtime,
+timings, peak memory, exit code) into the full Contract B result envelope, and derives
 `status` from the exit code / presence of a valid result.json (see that
 doc's Failure mapping table). So: on success, write ONLY
 `{"results": [...]}` and exit 0; on any failure, write NOTHING to
@@ -235,8 +259,8 @@ result.json, print the error to stderr, and exit non-zero — the sandbox's
 own "Runner exits non-zero / bad output -> error" path takes it from
 there. `run_task()` above still returns the full internal envelope shape
 (useful for tests and any in-process caller that wants the metadata
-directly); this block is the only place that has to narrow it down for
-the on-disk contract."""
+directly); this block is the only place that has to narrow it down and add
+reserved runtime provenance for the on-disk contract."""
 with entry:__main__ {
     workdir = os.environ.get("JACGRID_WORKDIR", "");
     if workdir == "" {
@@ -264,7 +288,7 @@ with entry:__main__ {
         print(f"connection-embedding: ok, runtime={execution['runtime']}, cpu_seconds={execution['cpu_seconds']}");
 
         rf = open(result_path, "w");
-        json.dump(result["output"], rf);
+        json.dump(_file_output(result), rf);
         rf.close();
     } except Exception as e {
         print(f"connection-embedding failed: {e}");

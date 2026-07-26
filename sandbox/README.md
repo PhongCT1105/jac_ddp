@@ -39,7 +39,7 @@ result_envelope: dict[str, any] = sandbox_run(task_envelope);
 ```
 
 `sandbox_run` takes one Contract B task envelope (`task_id`, `job_type`,
-`payload`, `limits`) and returns one Contract B result envelope (`task_id`,
+`payload`, `limits`, and frozen `workload` identity/policy) and returns one Contract B result envelope (`task_id`,
 `status`, `output`, `execution`, `error`) — see
 `contracts/task-execution/v1/`. **It never raises and never hangs.** Every
 failure mode — unknown job_type, launch failure, timeout, resource limit,
@@ -62,6 +62,11 @@ without coordinating with the worker/coordinator owner.
    (Contract C shape — `contracts/workload/v1/`). The manifest's
    `entrypoint` field (a path relative to the manifest's own directory) is
    what actually gets executed.
+   Before execution, the harness requires the task's pinned workload ID,
+   version, manifest SHA-256, and executable `package_sha256` to match.
+   The package digest covers manifest + entrypoint bytes and declared local
+   artifacts, but never a large external model cache. Drift fails closed
+   without launching the workload.
 3. `runner/harness.jac` creates a per-task workdir under `sandbox/work/`,
    writes the task envelope's `payload` (plus `task_id`) to `task.json`
    inside it, and launches `<jac_bin> run <entrypoint>` as a subprocess
@@ -71,10 +76,14 @@ without coordinating with the worker/coordinator owner.
    time against the envelope's `limits` (falling back to the workload
    manifest's `resource_requirements` if a limit is omitted), killing the
    whole process group on any violation.
-5. On a clean exit (code 0), it reads `<workdir>/result.json` and returns
-   it as `output`. Any other outcome maps to `error` / `timeout` /
-   `limit_exceeded` per the table below.
-6. The workdir is wiped (`shutil.rmtree`) after every run unless
+5. On a clean exit (code 0), it reads `<workdir>/result.json`. If reserved
+   `__jacgrid_execution.runtime` is present, it is promoted only when the
+   immutable manifest declares the tag in `runtime_tags`; an unapproved claim
+   is an error. The reserved object is always stripped before `output` leaves
+   the sandbox. Missing metadata keeps the manifest's default `name:version`.
+6. Any other outcome maps to `error` / `timeout` / `limit_exceeded` per the
+   table below.
+7. The workdir is wiped (`shutil.rmtree`) after every run unless
    `JACGRID_KEEP_WORKDIR=1` is set (debugging only).
 
 **Registering a new workload requires zero sandbox code changes** — add one
@@ -89,7 +98,9 @@ that:
 
 - reads `JACGRID_WORKDIR` from the environment,
 - reads `<workdir>/task.json` for its input (the task envelope's `payload`),
-- writes `<workdir>/result.json` with its output object, and
+- writes `<workdir>/result.json` with its application output, optionally plus
+  reserved `__jacgrid_execution.runtime` declared in manifest `runtime_tags`,
+  and
 - exits `0` on success (any other exit code is treated as `error`, and a
   clean exit with no `result.json` is also an `error`).
 
@@ -172,8 +183,11 @@ no-dot (project-root-absolute) import — hence the driver script:
 PYTHONPATH="$(pwd):$PYTHONPATH" .venv/bin/jac test sandbox/tests/run_tests.jac -v
 ```
 
-Seven tests, covering: happy path (`ok`), hang → `timeout`, memory hog →
-`limit_exceeded`, non-zero exit → `error`, unknown `job_type` → `error`,
+Nine tests, covering: noop happy path (`ok`), the approved real embedding
+workload (Contract B wrapper, result IDs, and vector comparison against either
+the pinned-model or deterministic-fallback golden with matching promoted
+runtime), unapproved runtime-spoof rejection, hang → `timeout`, memory
+hog → `limit_exceeded`, non-zero exit → `error`, unknown `job_type` → `error`,
 malformed envelope (never raises), and the Seatbelt network-denial proof
 (auto-skips as a trivial pass if `sandbox-exec` isn't on `PATH`).
 

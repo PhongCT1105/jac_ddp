@@ -18,6 +18,50 @@ import hashlib;
 import from uuid { uuid4 }
 import from datetime { datetime, timezone }
 
+::py::
+def coordinator_sandbox_run_bridge(task_envelope):
+    """Reuse the repo's generic allowlist + sandbox harness from this nested project."""
+    import sys
+    from importlib import import_module
+    from pathlib import Path
+
+    repo_root = str(Path(__file__).resolve().parents[3])
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    harness = import_module("sandbox.runner.harness")
+    return harness.sandbox_run(task_envelope)
+
+
+def coordinator_workload_policy_bridge(job_type):
+    """Read immutable verification/runtime policy through the sandbox registry."""
+    import sys
+    from importlib import import_module
+    from pathlib import Path
+
+    repo_root = str(Path(__file__).resolve().parents[3])
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    registry = import_module("sandbox.runner.registry")
+    workload = registry.resolve_workload(job_type)
+    if workload is None:
+        return {
+            "ok": False,
+            "error": f"no allowlisted workload for job_type={job_type}",
+            "runtime_tags": [],
+            "verification": {},
+        }
+    return {
+        "ok": True,
+        "error": None,
+        "workload_id": workload.workload_id,
+        "version": workload.version,
+        "manifest_sha256": workload.manifest_sha256,
+        "package_sha256": workload.package_sha256,
+        "runtime_tags": list(workload.runtime_tags),
+        "verification": dict(workload.verification),
+    }
+::py::
+
 # ---------------------------------------------------------------------------
 # Globals / configuration
 # ---------------------------------------------------------------------------
@@ -79,6 +123,12 @@ node Job {
     has job_id: str;
     has app_id: str;
     has job_type: str;
+    has workload_id: str = "";
+    has workload_version: str = "";
+    has manifest_sha256: str = "";
+    has package_sha256: str = "";
+    has workload_runtime_tags: list = [];
+    has workload_verification: dict = {};
     has payload: dict = {};
     has partitioning: dict = {};
     has verification: dict = {};
@@ -94,6 +144,12 @@ node Task {
     has task_id: str;
     has job_id: str;
     has job_type: str;
+    has workload_id: str = "";
+    has workload_version: str = "";
+    has manifest_sha256: str = "";
+    has package_sha256: str = "";
+    has workload_runtime_tags: list = [];
+    has workload_verification: dict = {};
     has idx: int = 0;
     has payload: dict = {};
     has limits: dict = {};
@@ -552,15 +608,66 @@ def index_results(output: dict) -> dict {
     return by_id;
 }
 
-"""TODO(verify-recompute): real coordinator-side recompute hook.
+"""Recompute sampled items through the exact same allowlist + sandbox path.
 
-Integration will implement this by calling the same embedding runner the
-sandbox uses (sentence-transformers `model`) and returning
-[{"id": ..., "embedding": [...]}, ...]. While it returns an empty list the
-verifier falls back to a structural check and says so in the detail block.
+Returns the full Contract B result envelope so verification can enforce both
+numeric agreement and the actual primary-vs-fallback runtime provenance.
 """
-def recompute_embedding_items(model: str, items: list) -> list {
-    return [];
+def pinned_workload_view(task: Task) -> dict {
+    return {
+        "id": task.workload_id,
+        "version": task.workload_version,
+        "manifest_sha256": task.manifest_sha256,
+        "package_sha256": task.package_sha256,
+        "runtime_tags": task.workload_runtime_tags,
+        "verification": task.workload_verification,
+    };
+}
+
+
+def recompute_embedding_items(task: Task, items: list) -> dict {
+    envelope: dict[str, any] = {
+        "task_id": "verify-" + uuid4().hex,
+        "job_type": "embedding",
+        "payload": {"model": str(task.payload.get("model", "")), "items": items},
+        "workload": pinned_workload_view(task),
+    };
+    return coordinator_sandbox_run_bridge(envelope) as dict;  # jac:ignore[W2001, W1051] -- narrow inline-Python bridge
+}
+
+
+"""Immutable manifest policy selected through the generic allowlist registry."""
+def workload_snapshot(job_type: str) -> dict {
+    return coordinator_workload_policy_bridge(job_type) as dict;  # jac:ignore[W2001, W1051] -- narrow inline-Python bridge
+}
+
+
+"""Fail-closed validation for the implemented verification methods."""
+def validate_verification_spec(job_type: str, spec: dict) -> dict {
+    method = str(spec.get("method", ""));
+    if job_type == "embedding" {
+        if method == "recompute_sample" {
+            return {"ok": True, "detail": ""};
+        }
+        return {"ok": False,
+                "detail": "embedding jobs require verification.method=recompute_sample"};
+    }
+    if job_type == "noop" and method == "recompute_sample" {
+        return {"ok": True, "detail": ""};
+    }
+    if method == "output_hash" {
+        expected = spec.get("expected_hash", None);
+        expected_many = spec.get("expected_hashes", None);
+        has_one = isinstance(expected, str) and str(expected) != "";
+        has_many = isinstance(expected_many, dict) and len(expected_many as dict) > 0;
+        if has_one or has_many {
+            return {"ok": True, "detail": ""};
+        }
+        return {"ok": False,
+                "detail": "output_hash requires expected_hash or non-empty expected_hashes"};
+    }
+    return {"ok": False,
+            "detail": "verification method is unknown or not implemented: " + method};
 }
 
 """recompute_sample for `noop`: recomputing an echo IS the echo."""
@@ -606,57 +713,141 @@ def verify_embedding(task: Task, result: Result, spec: dict) -> dict {
     by_id = index_results(result.output);
     rate = as_float(spec.get("sample_rate", 0.1), 0.1);
     dim = as_int(task.payload.get("dim", EMBEDDING_DIM), EMBEDDING_DIM);
-    tolerance = as_float(spec.get("tolerance", 0.999), 0.999);
     picked = sample_items(items, rate, task.task_id);
-    problems = [];
-    for item in picked {
+    tolerance = as_float(task.workload_verification.get("tolerance", 0.001), 0.001);
+    cosine_threshold = 1.0 - tolerance;
+    allowed_runtime_tags = task.workload_runtime_tags;
+    structure_problems = [];
+    missing = [];
+    for item in items {
         key = str(item.get("id", ""));
         row = by_id.get(key, None);
         if row is None {
-            problems.append({"id": key, "reason": "missing_from_output"});
+            structure_problems.append({"id": key, "reason": "missing_from_output"});
+            missing.append(key);
             continue;
         }
         vec = row.get("embedding", None);
         if not isinstance(vec, list) {
-            problems.append({"id": key, "reason": "embedding_not_a_list"});
+            structure_problems.append({"id": key, "reason": "embedding_not_a_list"});
             continue;
         }
         if len(vec) != dim {
-            problems.append({"id": key, "reason": "bad_dimension",
-                             "expected": dim, "actual": len(vec)});
+            structure_problems.append({"id": key, "reason": "bad_dimension",
+                                       "expected": dim, "actual": len(vec)});
+            continue;
         }
-    }
-    # TODO(verify-recompute): when the hook below is implemented the sampled
-    # items are recomputed on the coordinator and compared with cosine >= 0.999
-    # (spec §2.5 step 3). Until then we only assert structure.
-    recomputed = recompute_embedding_items(str(task.payload.get("model", "")), picked);
-    compared = 0;
-    if len(recomputed) > 0 {
-        expected_by_id = {};
-        for row in recomputed {
-            expected_by_id[str(row.get("id", ""))] = row.get("embedding", []);
-        }
-        for item in picked {
-            key = str(item.get("id", ""));
-            got = by_id.get(key, {}) as dict;
-            want = expected_by_id.get(key, []) as list;
-            if len(want) > 0 {
-                sim = cosine(got.get("embedding", []) as list, want);
-                compared += 1;
-                if sim < tolerance {
-                    problems.append({"id": key, "reason": "cosine_below_tolerance",
-                                     "cosine": sim, "tolerance": tolerance});
-                }
+        for value in vec {
+            if isinstance(value, bool) or (
+                not isinstance(value, int) and not isinstance(value, float)
+            ) {
+                structure_problems.append({"id": key,
+                                           "reason": "embedding_non_numeric"});
+                break;
             }
         }
     }
-    missing = [];
-    for item in items {
-        if str(item.get("id", "")) not in by_id {
-            missing.append(str(item.get("id", "")));
+
+    problems = list(structure_problems);
+
+    recomputed = recompute_embedding_items(task, picked);
+    recompute_status = str(recomputed.get("status", "error"));
+    recompute_error = recomputed.get("error", None);
+    recompute_execution_raw = recomputed.get("execution", None);
+    recompute_execution: dict = {};
+    if isinstance(recompute_execution_raw, dict) {
+        recompute_execution = recompute_execution_raw as dict;
+    } else {
+        problems.append({"reason": "recompute_missing_execution"});
+    }
+    original_runtime = str(result.execution.get("runtime", ""));
+    recompute_runtime = str(recompute_execution.get("runtime", ""));
+
+    if recompute_status != "ok" {
+        problems.append({"reason": "recompute_error",
+                         "status": recompute_status,
+                         "error": recompute_error});
+    }
+    if original_runtime not in allowed_runtime_tags {
+        problems.append({"reason": "original_runtime_unapproved",
+                         "runtime": original_runtime,
+                         "allowed": allowed_runtime_tags});
+    }
+    if original_runtime != recompute_runtime {
+        problems.append({"reason": "runtime_mismatch",
+                         "original_runtime": original_runtime,
+                         "recompute_runtime": recompute_runtime});
+    }
+
+    recompute_output_raw = recomputed.get("output", None);
+    recompute_output: dict = {};
+    if recompute_status == "ok" and isinstance(recompute_output_raw, dict) {
+        recompute_output = recompute_output_raw as dict;
+    } elif recompute_status == "ok" {
+        problems.append({"reason": "recompute_output_not_an_object"});
+    }
+    expected_by_id = index_results(recompute_output);
+    compared = 0;
+    for item in picked {
+        key = str(item.get("id", ""));
+        expected_row = expected_by_id.get(key, None);
+        if expected_row is None {
+            problems.append({"id": key, "reason": "missing_from_recompute"});
+            continue;
+        }
+        want_raw = expected_row.get("embedding", None);
+        if not isinstance(want_raw, list) {
+            problems.append({"id": key, "reason": "recomputed_embedding_not_a_list"});
+            continue;
+        }
+        want = want_raw as list;
+        if len(want) != dim {
+            problems.append({"id": key, "reason": "recomputed_bad_dimension",
+                             "expected": dim, "actual": len(want)});
+            continue;
+        }
+        recomputed_numeric = True;
+        for value in want {
+            if isinstance(value, bool) or (
+                not isinstance(value, int) and not isinstance(value, float)
+            ) {
+                recomputed_numeric = False;
+                break;
+            }
+        }
+        if not recomputed_numeric {
+            problems.append({"id": key, "reason": "recomputed_embedding_non_numeric"});
+            continue;
+        }
+        got_row = by_id.get(key, None);
+        if got_row is None {
+            continue;
+        }
+        got_raw = got_row.get("embedding", None);
+        if not isinstance(got_raw, list) or len(got_raw as list) != dim {
+            continue;
+        }
+        numeric = True;
+        for value in got_raw as list {
+            if isinstance(value, bool) or (
+                not isinstance(value, int) and not isinstance(value, float)
+            ) {
+                numeric = False;
+                break;
+            }
+        }
+        if not numeric {
+            continue;
+        }
+        sim = cosine(got_raw as list, want);
+        compared += 1;
+        if sim < cosine_threshold {
+            problems.append({"id": key, "reason": "cosine_below_tolerance",
+                             "cosine": sim, "threshold": cosine_threshold});
         }
     }
-    ok = len(problems) == 0 and len(missing) == 0;
+    ok = (len(picked) > 0 and compared == len(picked)
+          and len(problems) == 0 and len(missing) == 0);
     return {
         "ok": ok,
         "detail": {
@@ -665,12 +856,17 @@ def verify_embedding(task: Task, result: Result, spec: dict) -> dict {
             "items": len(items),
             "sampled": len(picked),
             "dim": dim,
-            "recompute": len(recomputed) > 0,
+            "recompute": True,
             "recomputed_compared": compared,
-            "structure_valid": len(problems) == 0,
+            "structure_valid": len(structure_problems) == 0 and len(missing) == 0,
+            "original_runtime": original_runtime,
+            "recompute_runtime": recompute_runtime,
+            "recompute_status": recompute_status,
+            "recompute_error": recompute_error,
+            "tolerance": tolerance,
+            "cosine_threshold": cosine_threshold,
             "problems": problems,
-            "missing_ids": missing,
-            "note": "TODO(verify-recompute): structural check only until recompute_embedding_items() is implemented at integration"
+            "missing_ids": missing
         }
     };
 }
@@ -688,10 +884,10 @@ def verify_output_hash(task: Task, result: Result, spec: dict) -> dict {
     }
     if expected == "" or expected is None {
         return {
-            "ok": True,
+            "ok": False,
             "detail": {"method": "output_hash", "computed_hash": computed,
                        "expected_hash": None,
-                       "note": "no expected_hash supplied; hash recorded for audit"}
+                       "reason": "missing expected hash"}
         };
     }
     ok = str(expected) == computed;
@@ -712,11 +908,11 @@ def verify_structure(task: Task, result: Result, spec: dict) -> dict {
         }
     }
     return {
-        "ok": len(missing) == 0,
+        "ok": False,
         "detail": {"method": str(spec.get("method", "none")),
-                   "fallback": "structure",
+                   "reason": "verification method is unknown or not implemented",
                    "items": len(items), "missing_ids": missing,
-                   "note": "verification method not implemented for hackathon scope; structural check applied"}
+                   "fail_closed": True}
     };
 }
 
@@ -732,6 +928,11 @@ def run_verification(job: Job, task: Task, result: Result) -> Verification {
         outcome = {"ok": False,
                    "detail": {"method": method, "reason": "worker reported status=" + result.status,
                               "error": result.error}};
+    } elif task.job_type == "embedding" and method != "recompute_sample" {
+        outcome = {"ok": False,
+                   "detail": {"method": method,
+                              "reason": "embedding jobs require recompute_sample",
+                              "fail_closed": True}};
     } elif method == "output_hash" {
         outcome = verify_output_hash(task, result, spec);
     } elif method == "recompute_sample" {
@@ -925,7 +1126,8 @@ def task_envelope(task: Task) -> dict {
         "task_id": task.task_id,
         "job_type": task.job_type,
         "payload": task.payload,
-        "limits": task.limits
+        "limits": task.limits,
+        "workload": pinned_workload_view(task)
     };
 }
 
@@ -973,10 +1175,16 @@ def validate_result_envelope(envelope: any) -> dict {
                 "detail": {"reason": "status must be one of the Contract B values",
                            "actual": status, "allowed": ALLOWED_RESULT_STATUS}};
     }
-    if not isinstance(env["output"], dict) {
+    output = env["output"];
+    if str(status) == "ok" and not isinstance(output, dict) {
         return {"ok": False,
-                "detail": {"reason": "output must be an object",
-                           "actual_type": type(env["output"]).__name__}};
+                "detail": {"reason": "output must be an object when status=ok",
+                           "actual_type": type(output).__name__}};
+    }
+    if str(status) != "ok" and output is not None and not isinstance(output, dict) {
+        return {"ok": False,
+                "detail": {"reason": "output must be null or an object for failure statuses",
+                           "actual_type": type(output).__name__}};
     }
     execution = env["execution"];
     if not isinstance(execution, dict) {
@@ -1002,6 +1210,31 @@ def validate_result_envelope(envelope: any) -> dict {
         return {"ok": False,
                 "detail": {"reason": "execution.runtime must be a non-empty string",
                            "actual": exec_dict["runtime"]}};
+    }
+    for key in ["started_at", "finished_at"] {
+        value = exec_dict[key];
+        if not isinstance(value, str) or str(value) == "" {
+            return {"ok": False,
+                    "detail": {"reason": "execution." + key + " must be a non-empty string",
+                               "actual": value}};
+        }
+    }
+    for key in ["peak_memory_mb", "cpu_seconds"] {
+        value = exec_dict[key];
+        numeric = (not isinstance(value, bool)
+                   and (isinstance(value, int) or isinstance(value, float)));
+        if not numeric or (value as float) < 0.0 {
+            return {"ok": False,
+                    "detail": {"reason": "execution." + key
+                                         + " must be a nonnegative number (bool is invalid)",
+                               "actual": value}};
+        }
+    }
+    exit_code = exec_dict["exit_code"];
+    if isinstance(exit_code, bool) or not isinstance(exit_code, int) {
+        return {"ok": False,
+                "detail": {"reason": "execution.exit_code must be an integer (bool is invalid)",
+                           "actual": exit_code}};
     }
     return {"ok": True, "detail": {"execution_fields": REQUIRED_EXECUTION_FIELDS}};
 }

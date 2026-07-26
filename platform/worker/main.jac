@@ -19,12 +19,13 @@ Configuration (environment variables):
     JACGRID_MAX_LOOPS     default 0 = forever       (used by tests)
     JACGRID_EXIT_WHEN_IDLE default 0                (1 = stop after N idle polls)
     JACGRID_IDLE_LIMIT    default 30                (idle polls before exit)
+    JACGRID_SANDBOX       default 0                 (set 1 for the demo)
     JACGRID_TASK_DELAY    default 0                 (fake work seconds, demo only)
 
 The execution of a task is isolated behind ONE call — `run_task(envelope)`.
-Today it dispatches to the local stub runner; at integration it will hand the
-same envelope to Luke's sandbox (`sandbox/`) and get the same result envelope
-back, with no other change to this file.
+With JACGRID_SANDBOX=1 (the documented demo setting), it hands the envelope to
+the sandbox (`sandbox/`) and returns that result envelope unchanged. When the
+flag is unset or 0, it keeps using the local stub runner.
 """
 
 import os;
@@ -36,6 +37,48 @@ import hashlib;
 import requests;
 import from datetime { datetime, timezone }
 
+def coordinator_http_session() -> any {
+    session = requests.Session();
+    session.trust_env = False;
+    return session;
+}
+
+::py::
+def sandbox_run_bridge(task_envelope):
+    """Import the repo-root sandbox from the worker's nested Jac project."""
+    import sys
+    from importlib import import_module
+    from pathlib import Path
+
+    repo_root = str(Path(__file__).resolve().parents[2])
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    harness = import_module("sandbox.runner.harness")
+    return harness.sandbox_run(task_envelope)
+
+
+def sandbox_workload_identity_bridge(job_type):
+    """Resolve the immutable workload identity used by coordinator envelopes."""
+    import sys
+    from importlib import import_module
+    from pathlib import Path
+
+    repo_root = str(Path(__file__).resolve().parents[2])
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    workload = import_module("sandbox.runner.registry").resolve_workload(job_type)
+    if workload is None:
+        return None
+    return {
+        "id": workload.workload_id,
+        "version": workload.version,
+        "manifest_sha256": workload.manifest_sha256,
+        "package_sha256": workload.package_sha256,
+        "runtime_tags": list(workload.runtime_tags),
+        "verification": dict(workload.verification),
+    }
+::py::
+
 glob COORDINATOR: str = os.environ.get("JACGRID_COORDINATOR", "http://127.0.0.1:8000");
 glob SECRET: str = os.environ.get("JACGRID_KEY", "jacgrid-dev-key");
 glob WORKER_NAME: str = os.environ.get("WORKER_NAME", socket.gethostname());
@@ -45,7 +88,9 @@ glob MAX_LOOPS: int = int(os.environ.get("JACGRID_MAX_LOOPS", "0"));
 glob EXIT_WHEN_IDLE: bool = os.environ.get("JACGRID_EXIT_WHEN_IDLE", "0") == "1";
 glob IDLE_LIMIT: int = int(os.environ.get("JACGRID_IDLE_LIMIT", "30"));
 glob HTTP_TIMEOUT: float = float(os.environ.get("JACGRID_HTTP_TIMEOUT", "30"));
+glob COORDINATOR_HTTP: any = coordinator_http_session();
 glob STUB_RUNTIME: str = "stub-runner:v0";
+glob SANDBOX_ENABLED: bool = os.environ.get("JACGRID_SANDBOX", "0") == "1";
 # Demo/test knob: pretend the workload takes this many seconds. Used by
 # tests/e2e_reassign.sh to kill a worker while it is holding a task.
 glob TASK_DELAY: float = float(os.environ.get("JACGRID_TASK_DELAY", "0"));
@@ -94,7 +139,7 @@ def capabilities() -> dict {
         "cpu_cores": os.cpu_count(),
         "memory_mb": 0,
         "job_types": job_types(),
-        "runtime": STUB_RUNTIME,
+        "runtime": "sandbox-harness:v1" if SANDBOX_ENABLED else STUB_RUNTIME,
         "platform": sys.platform
     };
 }
@@ -105,7 +150,7 @@ def call(walker_name: str, body: dict) -> dict {
     payload["secret"] = SECRET;
     url = COORDINATOR + "/walker/" + walker_name;
     try {
-        response = requests.post(url, json=payload, timeout=HTTP_TIMEOUT);
+        response = COORDINATOR_HTTP.post(url, json=payload, timeout=HTTP_TIMEOUT);
     } except Exception as exc {
         return {"error": "transport", "detail": str(exc)};
     }
@@ -132,7 +177,7 @@ def call(walker_name: str, body: dict) -> dict {
 }
 
 # ---------------------------------------------------------------------------
-# Stub runner — replaced by Luke's sandbox at integration (Contract B §5)
+# Stub runner — fallback path when JACGRID_SANDBOX is unset/0 (Contract B §5)
 # ---------------------------------------------------------------------------
 
 def pseudo_embedding(text: str, dim: int) -> list {
@@ -203,19 +248,25 @@ def stub_run(envelope: dict) -> dict {
 }
 
 def run_task(envelope: dict) -> dict {
-    """THE swap point. Today: stub runner. At integration: Luke's sandbox.
+    """THE swap point. Sandbox when enabled; local stub otherwise.
 
     Returns a complete Contract B result envelope (architecture §5) including
     the mandatory `execution` block.
     """;
+    if TASK_DELAY > 0.0 {
+        time.sleep(TASK_DELAY);
+    }
+    if SANDBOX_ENABLED {
+        # The sandbox owns the complete Contract B envelope. Return it as-is so
+        # the coordinator records the sandbox's execution metadata unchanged.
+        return sandbox_run_bridge(envelope) as dict;  # jac:ignore[W2001, W1051] -- inline Python bridge
+    }
+
     started_wall = time.time();
     started_cpu = time.process_time();
     started_at = iso_now();
     exit_code = 0;
     try {
-        if TASK_DELAY > 0.0 {
-            time.sleep(TASK_DELAY);
-        }
         outcome = stub_run(envelope);
     } except Exception as exc {
         outcome = {"status": "error", "output": {}, "error": str(exc)};
@@ -387,28 +438,51 @@ with entry {
         sweep_loop();
         log("sweeper stopped");
     } elif os.environ.get("JACGRID_WORKER_SELFTEST", "0") == "1" {
-        # Offline check of the runner + envelope shape (no coordinator needed).
+        # Offline check of the selected runner + Contract B shape (no
+        # coordinator needed). The sandbox owns its runtime tag; do not let
+        # this test accidentally keep asserting the fallback stub contract.
         env = {"task_id": "t-selftest", "job_type": "noop",
                "payload": {"items": [{"id": "a", "text": "x"}]},
                "limits": {"cpu_seconds": 120, "memory_mb": 2048, "wall_seconds": 180, "network": "none"}};
+        if SANDBOX_ENABLED {
+            env["workload"] = sandbox_workload_identity_bridge("noop");  # jac:ignore[W2001, W1051] -- inline Python bridge
+        }
         out = run_task(env);
-        assert out["status"] == "ok", "noop stub failed";
+        assert out["task_id"] == env["task_id"], "noop task_id changed";
+        assert out["status"] == "ok", "noop runner failed";
+        assert out["error"] is None, "noop result unexpectedly has an error";
         assert out["output"]["results"] == env["payload"]["items"], "noop echo mismatch";
         for key in ["runtime", "started_at", "finished_at", "peak_memory_mb", "cpu_seconds", "exit_code"] {
             assert key in out["execution"], "execution block missing " + key;
         }
+        expected_noop_runtime = "noop-runner:1.0.0" if SANDBOX_ENABLED else STUB_RUNTIME;
+        assert out["execution"]["runtime"] == expected_noop_runtime, "noop runtime does not match selected runner";
+        expected_capability_runtime = "sandbox-harness:v1" if SANDBOX_ENABLED else STUB_RUNTIME;
+        assert capabilities()["runtime"] == expected_capability_runtime, "worker capability runtime does not match selected runner";
         env2 = {"task_id": "t-selftest-2", "job_type": "embedding",
                 "payload": {"model": "all-MiniLM-L6-v2", "items": [{"id": "a", "text": "hello"}]},
                 "limits": {}};
+        if SANDBOX_ENABLED {
+            env2["workload"] = sandbox_workload_identity_bridge("embedding");  # jac:ignore[W2001, W1051] -- inline Python bridge
+        }
         out2 = run_task(env2);
-        assert out2["status"] == "ok", "embedding stub failed";
+        assert out2["task_id"] == env2["task_id"], "embedding task_id changed";
+        assert out2["status"] == "ok", "embedding runner failed";
+        assert out2["error"] is None, "embedding result unexpectedly has an error";
         vec = out2["output"]["results"][0]["embedding"] as list;
         assert len(vec) == EMBEDDING_DIM, "embedding dim mismatch";
-        assert vec == run_task(env2)["output"]["results"][0]["embedding"], "embedding not deterministic";
+        expected_embedding_runtime = "connection-embedding:1.0.0" if SANDBOX_ENABLED else STUB_RUNTIME;
+        assert out2["execution"]["runtime"] == expected_embedding_runtime, "embedding runtime does not match selected runner";
+        if not SANDBOX_ENABLED {
+            assert vec == run_task(env2)["output"]["results"][0]["embedding"], "embedding not deterministic";
+        }
         env3 = {"task_id": "t-selftest-3", "job_type": "mystery", "payload": {}, "limits": {}};
         out3 = run_task(env3);
         assert out3["status"] == "error", "unknown job_type should error";
-        print("[worker selftest] OK dim=" + str(len(vec)) + " runtime=" + str(out["execution"]["runtime"]));
+        assert out3["task_id"] == env3["task_id"], "error task_id changed";
+        assert out3["execution"] is not None, "error envelope missing execution block";
+        print("[worker selftest] OK dim=" + str(len(vec)) + " runtime=" + str(out2["execution"]["runtime"])
+            + " capability_runtime=" + expected_capability_runtime);
     } else {
         log("coordinator=" + COORDINATOR + " job_types=" + json.dumps(job_types()));
         wid = register();

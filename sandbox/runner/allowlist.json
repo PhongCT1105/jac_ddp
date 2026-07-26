@@ -4,5 +4,10 @@
     "workload_id": "noop-runner",
     "version": "1.0.0",
     "manifest": "sandbox/fixtures/noop/1.0.0/workload.json"
+  },
+  "embedding": {
+    "workload_id": "connection-embedding",
+    "version": "1.0.0",
+    "manifest": "workloads/connection-embedding/workload.json"
   }
 }

@@ -7,7 +7,7 @@
   "input_schema": {
     "mode": {
       "type": "string",
-      "enum": ["echo", "crash", "hang", "memory_hog", "network"],
+      "enum": ["echo", "crash", "hang", "memory_hog", "network", "runtime_metadata"],
       "default": "echo"
     },
     "value": {"type": "any"}

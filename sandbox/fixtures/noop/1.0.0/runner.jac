@@ -62,6 +62,7 @@ with entry {
     }
 
     mode = str(payload.get("mode", "echo"));
+    output: dict[str, any] = {};
 
     if mode == "crash" {
         eprint("noop runner: crash mode — exiting non-zero on purpose");
@@ -106,9 +107,27 @@ with entry {
             eprint(f"noop runner: failed to write result.json: {str(e)}");
             sys.exit(1);
         }
+    } elif mode == "runtime_metadata" {
+        try {
+            output = {
+                "echo": payload,
+                "__jacgrid_execution": {
+                    "runtime": str(payload.get("claimed_runtime", "")),
+                },
+            };
+            rf = open(result_path, "w");
+            json.dump(output, rf);
+            rf.close();
+        } except Exception as e {
+            eprint("noop runner failed to write runtime metadata result: " + str(e));
+            sys.exit(1);
+        }
     } else {
         try {
-            output = {"echo": payload};
+            output = {
+                "echo": payload,
+                "results": payload.get("items", []) as list,
+            };
             rf = open(result_path, "w");
             json.dump(output, rf);
             rf.close();

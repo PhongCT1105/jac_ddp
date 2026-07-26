@@ -14,11 +14,25 @@ cd platform/worker
 
 ../../.venv/bin/jac check .                                    # compile + typecheck
 JACGRID_WORKER_SELFTEST=1 ../../.venv/bin/jac run main.jac     # offline runner self-test
+JACGRID_SANDBOX=1 JACGRID_WORKER_SELFTEST=1 ../../.venv/bin/jac run main.jac # sandbox self-test
 JACGRID_COORDINATOR=http://127.0.0.1:8000 ../../.venv/bin/jac run main.jac   # join the grid
 ```
 
 Run as many as you like — one per Mac in the demo, or several on one box with
 different `WORKER_NAME`s.
+
+The low-level worker keeps `JACGRID_SANDBOX=0` as its backwards-compatible
+default. The supported demo launcher changes that posture intentionally:
+
+```bash
+./scripts/demo/start_worker.sh --name mac-1-worker
+# JACGRID_SANDBOX=1 by default; set JACGRID_SANDBOX=0 explicitly to opt out
+```
+
+Set `JACGRID_SEATBELT=1` on macOS to add the sandbox profile's network and
+write-scope denials to task subprocesses. It defaults to `0`; resource limits,
+process-group containment, the allowlist, and scratch-workdir isolation remain
+active whenever `JACGRID_SANDBOX=1`.
 
 ## Configuration (environment variables)
 
@@ -32,6 +46,8 @@ different `WORKER_NAME`s.
 | `JACGRID_HEARTBEAT` | `5` | seconds between heartbeats |
 | `JACGRID_POLL` | `1` | seconds between `next_task` polls when idle |
 | `JACGRID_HTTP_TIMEOUT` | `30` | per-request HTTP timeout |
+| `JACGRID_SANDBOX` | `0` | `1` routes tasks through the allowlisted sandbox; `0` keeps the local stub runner |
+| `JACGRID_SEATBELT` | `0` | macOS only: `1` adds verified task-subprocess network/write denials |
 | `JACGRID_EMBEDDING_DIM` | `384` | stub embedding dimension |
 | `JACGRID_TASK_DELAY` | `0` | fake seconds of work per task (demo/test only) |
 | `JACGRID_MAX_LOOPS` | `0` (forever) | stop after N loop iterations (tests) |
@@ -90,8 +106,8 @@ envelope, including the mandatory `execution` metadata block:
 }
 ```
 
-Today `run_task` dispatches to the local **stub runner** (`stub_run`), which has
-no isolation:
+By default (`JACGRID_SANDBOX=0`), `run_task` dispatches to the local **stub
+runner** (`stub_run`), which has no isolation:
 
 - `noop` — echoes each input item back (integration testing only)
 - `embedding` — a deterministic pseudo-embedding: a SHA-256 stream seeded with
@@ -101,9 +117,23 @@ no isolation:
 - anything else — `status: "error"`, which the coordinator treats as a failed
   attempt and requeues.
 
-At integration, `run_task` hands the same envelope to the Luke/Santhos sandbox
-(`sandbox/`) and gets the same envelope shape back. **Nothing else in this file
-changes** — that is the whole point of the single call site.
+Set `JACGRID_SANDBOX=1` to hand the same envelope to the generic
+Luke/Santhos sandbox (`sandbox/`). Its allowlist currently approves `noop` and
+`embedding` (`connection-embedding:1.0.0`); it enforces execution limits and
+returns the complete Contract B envelope unchanged. In this mode the worker
+advertises `sandbox-harness:v1`, while individual results report the selected
+allowlisted workload (`noop-runner:1.0.0` or `connection-embedding:1.0.0`).
+
+The embedding manifest tag proves which approved package ran, not whether the
+package selected its pinned primary model or its deterministic fallback. The
+sandbox integration test compares output vectors with both application-owned
+goldens and reports the matching fixture.
+
+Run both offline paths before a demo:
+
+```bash
+bash platform/worker/tests/selftest_modes.sh
+```
 
 ## Failure behaviour
 

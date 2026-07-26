@@ -9,10 +9,10 @@ One interface (`JacGridClient`), two implementations, selected by the
     running.
   - LiveJacGrid: talks to the real coordinator over HTTP —
     /walker/create_job, /walker/get_job, /walker/get_job_result — with
-    `secret: "jacgrid-dev-key"` in the body, matching the walkers Phong's
-    platform/coordinator actually exposes. The 0.16 response envelope is
-    `{"ok": ..., "data": {"result": ..., "reports": [...]}, ...}` —
-    unwrap `data.reports[0]`.
+    `secret: JACGRID_KEY` in the body (default `jacgrid-dev-key`), matching
+    the walkers Phong's platform/coordinator actually exposes. The 0.16
+    response envelope is `{"ok": ..., "data": {"result": ...,
+    "reports": [...]}, ...}` — unwrap `data.reports[0]`.
 
 Dict shapes below are exactly Contract A §4 (job status / job result) --
 no field renames.
@@ -23,8 +23,15 @@ import math;
 import hashlib;
 import requests;
 
+def coordinator_http_session() -> any {
+    session = requests.Session();
+    session.trust_env = False;
+    return session;
+}
+
 glob JACGRID_COORDINATOR: str = os.environ.get("JACGRID_COORDINATOR", "http://127.0.0.1:8000");
-glob JACGRID_SECRET: str = "jacgrid-dev-key";
+glob JACGRID_SECRET: str = os.environ.get("JACGRID_KEY", "jacgrid-dev-key");
+glob COORDINATOR_HTTP: any = coordinator_http_session();
 
 glob EMBED_DIM: int = 384;
 glob MOCK_WORKERS: list[str] = ["mac1", "mac2", "mac3"];
@@ -269,7 +276,7 @@ obj LiveJacGrid(JacGridClient) {
             "verification": {"method": "recompute_sample", "sample_rate": 0.1},
             "budget": {"max_total": 3.0, "price_per_task": 0.10, "currency": "TESTUSD"},
         };
-        resp = requests.post(JACGRID_COORDINATOR + "/walker/create_job", json=body, timeout=30);
+        resp = COORDINATOR_HTTP.post(JACGRID_COORDINATOR + "/walker/create_job", json=body, timeout=30);
         data = resp.json() as dict[str, any];
         rep = _unwrap(data);
         return str(rep.get("job_id", ""));
@@ -277,14 +284,14 @@ obj LiveJacGrid(JacGridClient) {
 
     override def poll(job_id: str) -> dict[str, any] {
         body = {"secret": JACGRID_SECRET, "job_id": job_id};
-        resp = requests.post(JACGRID_COORDINATOR + "/walker/get_job", json=body, timeout=30);
+        resp = COORDINATOR_HTTP.post(JACGRID_COORDINATOR + "/walker/get_job", json=body, timeout=30);
         data = resp.json() as dict[str, any];
         return _unwrap(data);
     }
 
     override def fetch_results(job_id: str) -> dict[str, any] {
         body = {"secret": JACGRID_SECRET, "job_id": job_id};
-        resp = requests.post(JACGRID_COORDINATOR + "/walker/get_job_result", json=body, timeout=30);
+        resp = COORDINATOR_HTTP.post(JACGRID_COORDINATOR + "/walker/get_job_result", json=body, timeout=30);
         data = resp.json() as dict[str, any];
         return _unwrap(data);
     }

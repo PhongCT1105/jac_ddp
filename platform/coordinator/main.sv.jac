@@ -230,6 +230,20 @@ walker:pub create_job {
         verification = self.verification if len(self.verification) > 0 else {"method": "recompute_sample", "sample_rate": 0.1};
         budget = self.budget if len(self.budget) > 0 else {"max_total": 0.0, "price_per_task": 0.0, "currency": DEFAULT_CURRENCY};
 
+        verification_check = validate_verification_spec(self.job_type, verification);
+        if not verification_check["ok"] {
+            report {"error": "invalid_request",
+                    "detail": verification_check["detail"]};
+            disengage;
+        }
+        workload = workload_snapshot(self.job_type);
+        if not workload.get("ok", False) {
+            report {"error": "invalid_request",
+                    "detail": "job_type has no resolvable immutable workload: "
+                              + str(workload.get("error", "unknown workload error"))};
+            disengage;
+        }
+
         price = as_float(budget.get("price_per_task", 0.0), 0.0);
         max_total = as_float(budget.get("max_total", 0.0), 0.0);
         currency = str(budget.get("currency", DEFAULT_CURRENCY));
@@ -260,6 +274,12 @@ walker:pub create_job {
             job_id=new_id("job"),
             app_id=self.app_id,
             job_type=self.job_type,
+            workload_id=str(workload["workload_id"]),
+            workload_version=str(workload["version"]),
+            manifest_sha256=str(workload["manifest_sha256"]),
+            package_sha256=str(workload["package_sha256"]),
+            workload_runtime_tags=workload["runtime_tags"] as list,
+            workload_verification=workload["verification"] as dict,
             payload=self.payload,
             partitioning=partitioning,
             verification=verification,
@@ -279,6 +299,12 @@ walker:pub create_job {
                 task_id=new_id("t"),
                 job_id=job.job_id,
                 job_type=self.job_type,
+                workload_id=job.workload_id,
+                workload_version=job.workload_version,
+                manifest_sha256=job.manifest_sha256,
+                package_sha256=job.package_sha256,
+                workload_runtime_tags=job.workload_runtime_tags,
+                workload_verification=job.workload_verification,
                 idx=i,
                 payload=slice_payload as dict,
                 limits=limits,
@@ -512,7 +538,11 @@ walker:pub submit_result {
         }
         envelope = self.result_envelope as dict;
         status = str(envelope["status"]);
-        output = envelope["output"] as dict;
+        output_raw = envelope["output"];
+        output: dict = {};
+        if isinstance(output_raw, dict) {
+            output = output_raw as dict;
+        }
         execution = envelope["execution"] as dict;
         error_text = envelope.get("error", None);
         now = now_ts();

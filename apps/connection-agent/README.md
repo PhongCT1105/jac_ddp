@@ -82,10 +82,20 @@ One interface (`JacGridClient`), switched by env var `JACGRID_MODE`:
 - **`live`** — `LiveJacGrid`: real HTTP against `JACGRID_COORDINATOR`
   (default `http://127.0.0.1:8000`), hitting `/walker/create_job`,
   `/walker/get_job`, `/walker/get_job_result` with
-  `secret: "jacgrid-dev-key"` in the body — matches exactly what
-  `platform/coordinator/main.sv.jac` exposes. Unwraps the 0.16 response
-  envelope (`data.reports[0]`). Built to contract; not yet integration-run
-  against a live coordinator process (that's the next milestone, S-M4).
+  `secret: JACGRID_KEY` in the body (default `jacgrid-dev-key`) — matching
+  exactly what `platform/coordinator/main.sv.jac` exposes. Unwraps the 0.16
+  response envelope (`data.reports[0]`). This path is integration-tested with
+  a non-default key against a real LAN coordinator and two sandbox workers by
+  `tests/integration/e2e_lan_sandbox_embedding.sh`.
+
+Live launch, from this directory:
+
+```bash
+JACGRID_MODE=live \
+JACGRID_COORDINATOR=http://<COORDINATOR-LAN-IP>:8000 \
+JACGRID_KEY=jacgrid-dev-key \
+../../.venv/bin/jac start main.sv.jac --no_client --port 8080
+```
 
 ## Frontend — `web/index.html`
 
@@ -102,6 +112,10 @@ Self-contained HTML+JS, three screens per the spec:
 
 The API base is configurable in the UI (persisted to `localStorage`) so the
 same page works against any port/host without editing the file.
+
+For the three-Mac demo, open `web/index.html` directly and set API base to
+`http://<MAC-1-LAN-IP>:8080`. That is the connection-agent server; it then
+talks to the coordinator URL from its own `JACGRID_COORDINATOR` environment.
 
 ## Proof — `tests/e2e_mock.sh`
 
@@ -143,3 +157,13 @@ the 100-person pool, not random noise.
   `platform/coordinator` hit. Worked around identically: a `PY_ROUND: any
   = round;` alias called through and cast back, in both this app and the
   `connection-embedding` workload.
+
+The live proof is:
+
+```bash
+../../tests/integration/e2e_lan_sandbox_embedding.sh
+```
+
+It covers seed -> create -> find -> poll -> results against the real
+coordinator, including a non-default shared key and a paid receipt from at
+least two sandbox workers.

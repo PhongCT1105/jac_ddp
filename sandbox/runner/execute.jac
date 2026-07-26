@@ -13,6 +13,7 @@ import json;
 import os;
 import signal as signal_mod;
 import subprocess;
+import sys;
 import time;
 
 import from datetime { datetime, timezone }
@@ -20,6 +21,17 @@ import from datetime { datetime, timezone }
 glob POLL_INTERVAL_SECONDS: float = 0.1;
 glob KILL_REAP_TIMEOUT_SECONDS: float = 5.0;
 glob STDERR_TAIL_CHARS: int = 4000;
+glob RESERVED_EXECUTION_METADATA_FIELD: str = "__jacgrid_execution";
+glob RESULT_JSON_MAX_BYTES: int = 50 * 1024 * 1024;  # 50MB — a workload's result.json
+                                                       # has no business being bigger than this;
+                                                       # refuse to read it into memory if it is.
+
+
+def eprint(msg: str) {
+    err = sys.stderr as any;
+    err.write(msg + "\n");
+}
+
 
 """Whether psutil imports cleanly in this environment (checked once)."""
 def psutil_available() -> bool {
@@ -33,6 +45,20 @@ def psutil_available() -> bool {
 
 
 glob HAVE_PSUTIL: bool = psutil_available();
+
+with entry {
+    if not HAVE_PSUTIL {
+        eprint(
+            "JacGrid sandbox WARNING: psutil is not installed in this environment. "
+            "CPU-time limit enforcement is DISABLED (cpu_seconds always reports 0.0; "
+            "a runaway task is only caught by wall_seconds, and will be misreported "
+            "as `timeout` rather than `limit_exceeded`), and RSS tracking falls back "
+            "to a single-process `ps` sample (child processes are not counted). "
+            "Run sandbox/setup.sh to install psutil into .venv. See sandbox/README.md "
+            "\"Resource enforcement\" for the full caveat."
+        );
+    }
+}
 
 
 """Current UTC time formatted per Contract B (`2026-07-26T14:03:21Z`)."""
@@ -57,9 +83,11 @@ def rss_mb_psutil(pid: int) -> float {
     try {
         import psutil;
         proc = psutil.Process(pid) as any;
-        children = proc.children(recursive=True) as list[any];
         procs: list[any] = [proc];
-        procs.extend(children);
+        try {
+            children = proc.children(recursive=True) as list[any];
+            procs.extend(children);
+        } except Exception { }
         for p in procs {
             try {
                 rss_bytes: float = p.memory_info().rss as float;
@@ -79,9 +107,11 @@ def cpu_seconds_psutil(pid: int) -> float {
     try {
         import psutil;
         proc = psutil.Process(pid) as any;
-        children = proc.children(recursive=True) as list[any];
         procs: list[any] = [proc];
-        procs.extend(children);
+        try {
+            children = proc.children(recursive=True) as list[any];
+            procs.extend(children);
+        } except Exception { }
         for p in procs {
             try {
                 ct = p.cpu_times() as any;
@@ -171,12 +201,21 @@ def run_subprocess(
     workdir: str,
     env: dict[str, str],
     runtime_tag: str,
+    allowed_runtime_tags: list[str],
     wall_seconds: float,
     cpu_seconds_limit: float,
     memory_mb_limit: float,
 ) -> dict[str, any] {
     started_at = iso_now();
     start_monotonic = time.monotonic();
+
+    if not HAVE_PSUTIL {
+        eprint(
+            f"JacGrid sandbox WARNING (task runtime {runtime_tag}): psutil unavailable — "
+            "this task's cpu_seconds will report 0.0 and its CPU limit is not enforced "
+            "(only wall_seconds and single-process RSS are); see sandbox/README.md."
+        );
+    }
 
     try {
         proc = subprocess.Popen(
@@ -294,9 +333,18 @@ def run_subprocess(
         );
     }
 
+    result_size = os.path.getsize(result_path);
+    if result_size > RESULT_JSON_MAX_BYTES {
+        return partial(
+            "error", None,
+            f"result.json is {result_size} bytes, over the {RESULT_JSON_MAX_BYTES}-byte cap — refusing to read it",
+            runtime_tag, started_at, finished_at, peak_rss, last_cpu, exit_code,
+        );
+    }
+
     try {
         rf = open(result_path, "r");
-        output = json.load(rf) as dict[str, any];
+        output_raw = json.load(rf);
         rf.close();
     } except Exception as e {
         return partial(
@@ -305,8 +353,45 @@ def run_subprocess(
         );
     }
 
+    if not isinstance(output_raw, dict) {
+        return partial(
+            "error", None, "result.json must contain an output object",
+            runtime_tag, started_at, finished_at, peak_rss, last_cpu, exit_code,
+        );
+    }
+    output = output_raw as dict[str, any];
+    actual_runtime = runtime_tag;
+    runtime_metadata = output.pop(RESERVED_EXECUTION_METADATA_FIELD, None);
+    if runtime_metadata is not None {
+        if not isinstance(runtime_metadata, dict) {
+            return partial(
+                "error", None,
+                f"{RESERVED_EXECUTION_METADATA_FIELD} must be an object",
+                runtime_tag, started_at, finished_at, peak_rss, last_cpu, exit_code,
+            );
+        }
+        metadata = runtime_metadata as dict[str, any];
+        claimed_runtime = metadata.get("runtime", None);
+        if not isinstance(claimed_runtime, str) or str(claimed_runtime) == "" {
+            return partial(
+                "error", None,
+                f"{RESERVED_EXECUTION_METADATA_FIELD}.runtime must be a non-empty string",
+                runtime_tag, started_at, finished_at, peak_rss, last_cpu, exit_code,
+            );
+        }
+        actual_runtime = str(claimed_runtime);
+        if actual_runtime not in allowed_runtime_tags {
+            return partial(
+                "error", None,
+                f"workload claimed unapproved runtime '{actual_runtime}'; "
+                f"manifest allows {allowed_runtime_tags}",
+                runtime_tag, started_at, finished_at, peak_rss, last_cpu, exit_code,
+            );
+        }
+    }
+
     return partial(
         "ok", output, None,
-        runtime_tag, started_at, finished_at, peak_rss, last_cpu, exit_code,
+        actual_runtime, started_at, finished_at, peak_rss, last_cpu, exit_code,
     );
 }

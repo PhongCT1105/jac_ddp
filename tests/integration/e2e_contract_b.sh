@@ -105,6 +105,42 @@ expect_rejected "output is a list, not an object" \
                    "finished_at":"2026-07-26T00:00:01Z","peak_memory_mb":1,
                    "cpu_seconds":0.1,"exit_code":0}}'
 
+expect_rejected "ok status with null output" \
+    '{"status":"ok","output":null,
+      "execution":{"runtime":"stub:v0","started_at":"2026-07-26T00:00:00Z",
+                   "finished_at":"2026-07-26T00:00:01Z","peak_memory_mb":1,
+                   "cpu_seconds":0.1,"exit_code":0}}'
+
+expect_rejected "execution.started_at empty" \
+    '{"status":"ok","output":{},
+      "execution":{"runtime":"stub:v0","started_at":"",
+                   "finished_at":"2026-07-26T00:00:01Z","peak_memory_mb":1,
+                   "cpu_seconds":0.1,"exit_code":0}}'
+
+expect_rejected "execution.finished_at is not a string" \
+    '{"status":"ok","output":{},
+      "execution":{"runtime":"stub:v0","started_at":"2026-07-26T00:00:00Z",
+                   "finished_at":42,"peak_memory_mb":1,
+                   "cpu_seconds":0.1,"exit_code":0}}'
+
+expect_rejected "execution.peak_memory_mb rejects bool" \
+    '{"status":"ok","output":{},
+      "execution":{"runtime":"stub:v0","started_at":"2026-07-26T00:00:00Z",
+                   "finished_at":"2026-07-26T00:00:01Z","peak_memory_mb":true,
+                   "cpu_seconds":0.1,"exit_code":0}}'
+
+expect_rejected "execution.cpu_seconds rejects negative" \
+    '{"status":"ok","output":{},
+      "execution":{"runtime":"stub:v0","started_at":"2026-07-26T00:00:00Z",
+                   "finished_at":"2026-07-26T00:00:01Z","peak_memory_mb":1,
+                   "cpu_seconds":-0.1,"exit_code":0}}'
+
+expect_rejected "execution.exit_code rejects string" \
+    '{"status":"ok","output":{},
+      "execution":{"runtime":"stub:v0","started_at":"2026-07-26T00:00:00Z",
+                   "finished_at":"2026-07-26T00:00:01Z","peak_memory_mb":1,
+                   "cpu_seconds":0.1,"exit_code":"0"}}'
+
 echo "    $PASSES malformed envelopes rejected; graph untouched every time"
 
 echo
@@ -143,6 +179,38 @@ final=$(post audit_job "{\"job_id\": \"$JOB_ID\"}")
 echo "$final" | jq -e '.tasks[0].attempts[0].result.execution.runtime == "stub-runner:v0"' >/dev/null \
     || fail "the execution block did not reach the audit timeline: $final"
 echo "    execution metadata is in the audit timeline, as the contract requires"
+
+echo
+echo "[6] output:null is valid for a timeout envelope and fails without payment"
+TIMEOUT_JOB_ID=$(post create_job '{
+    "app_id": "e2e-contract-b",
+    "job_type": "noop",
+    "payload": {"items": [{"id": "timeout-1", "text": "timeout"}]},
+    "partitioning": {"strategy": "chunk", "chunk_size": 1},
+    "verification": {"method": "recompute_sample", "sample_rate": 1.0},
+    "budget": {"max_total": 1.0, "price_per_task": 0.1, "currency": "TESTUSD"}
+}' | jq -r '.job_id')
+TIMEOUT_TASK_ID=$(post next_task "{\"worker_id\": \"$WORKER_ID\"}" | jq -r '.task.task_id // empty')
+[ -n "$TIMEOUT_TASK_ID" ] || fail "timeout task was not assigned"
+timeout_reply=$(post submit_result "$(jq -cn --arg t "$TIMEOUT_TASK_ID" '{
+    task_id:$t,
+    result_envelope:{
+      task_id:$t,status:"timeout",output:null,
+      execution:{runtime:"noop-runner:1.0.0",started_at:"2026-07-26T00:00:00Z",
+                 finished_at:"2026-07-26T00:00:02Z",peak_memory_mb:2,
+                 cpu_seconds:0.2,exit_code:-9},
+      error:"wall limit exceeded"
+    }}')")
+[ "$(echo "$timeout_reply" | jq -r '.error // empty')" != "protocol_violation" ] \
+    || fail "legitimate timeout envelope was rejected as protocol violation: $timeout_reply"
+[ "$(echo "$timeout_reply" | jq -r '.verification.outcome')" = "failed" ] \
+    || fail "timeout did not fail verification: $timeout_reply"
+[ "$(echo "$timeout_reply" | jq '.payment')" = "null" ] \
+    || fail "timeout attempt was paid: $timeout_reply"
+timeout_audit=$(post audit_job "{\"job_id\": \"$TIMEOUT_JOB_ID\"}")
+echo "$timeout_audit" | jq -e '.tasks[0].payment == null and .tasks[0].attempts[0].result.status == "timeout"' \
+    >/dev/null || fail "timeout result was not safely persisted without payment: $timeout_audit"
+echo "    timeout accepted as Contract B failure, requeued, and unpaid"
 
 echo
 echo "PASS: Contract B enforced — $PASSES malformed envelopes rejected without touching the graph, well-formed one accepted"

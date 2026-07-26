@@ -60,9 +60,13 @@ sandbox_run(task_envelope) -> result_envelope
 3. launch the immutable workload entrypoint declared in its manifest
    (workload ID + version selected from the allowlist registry)
 4. enforce wall timer; poll RSS for memory limit
-5. runner writes result.json (the `output` part)
-6. wrap with execution metadata → result envelope
-7. wipe workdir
+5. runner writes result.json (the application `output` part, optionally plus
+   reserved `__jacgrid_execution.runtime`)
+6. if present, accept that runtime only when the immutable workload manifest
+   declares it in `runtime_tags`; promote it into execution metadata and strip
+   the reserved object so it cannot leak into application output
+7. wrap with execution metadata → result envelope
+8. wipe workdir
 ```
 
 ### Runner registry (allowlist)
