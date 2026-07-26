@@ -22,6 +22,8 @@ import from datetime { datetime, timezone }
 # Globals / configuration
 # ---------------------------------------------------------------------------
 
+glob PY_ROUND: any = round;
+
 glob API_KEY: str = os.environ.get("JACGRID_KEY", "jacgrid-dev-key");
 
 # Liveness thresholds are computed from COORDINATOR receive time only
@@ -170,24 +172,24 @@ node Reputation {
 # Edges (architecture §3)
 # ---------------------------------------------------------------------------
 
-edge Submits {}        # Application -> Job
-edge Contains {}       # Job -> Task
-edge AttemptedBy {}    # Task -> Attempt
-edge ExecutedBy {}     # Attempt -> Worker
-edge HostedOn {}       # Worker -> Device
-edge RanInside {}      # Attempt -> Sandbox
-edge Produced {}       # Attempt -> Result
-edge CheckedBy {}      # Result -> Verification
-edge SettledBy {}      # Task -> Payment
-edge PaidTo {}         # Payment -> Wallet
-edge RatedBy {}        # Worker -> Reputation
+edge Submits: Application --> Job {}
+edge Contains: Job --> Task {}
+edge AttemptedBy: Task --> Attempt {}
+edge ExecutedBy: Attempt --> Worker {}
+edge HostedOn: Worker --> Device {}
+edge RanInside: Attempt --> Sandbox {}
+edge Produced: Attempt --> Result {}
+edge CheckedBy: Result --> Verification {}
+edge SettledBy: Task --> Payment {}
+edge PaidTo: Payment --> Wallet {}
+edge RatedBy: Worker --> Reputation {}
 
 # ---------------------------------------------------------------------------
 # Small utilities
 # ---------------------------------------------------------------------------
 
+"""Coordinator wall-clock. The ONLY time source used for liveness."""
 def now_ts() -> float {
-    """Coordinator wall-clock. The ONLY time source used for liveness.""";
     return time.time();
 }
 
@@ -199,13 +201,19 @@ def new_id(prefix: str) -> str {
     return prefix + "-" + str(uuid4())[0:8];
 }
 
-def canonical(obj: any) -> str {
-    """Stable JSON serialisation used for hashing and equality checks.""";
+"""Stable JSON serialisation used for hashing and equality checks."""
+def canonical(data: any) -> str {
     try {
-        return json.dumps(obj, sort_keys=True, separators=(",", ":"), default=str);
-    } except Exception as e {
-        return str(obj);
+        return json.dumps(data, sort_keys=True, separators=(",", ":"), default=lambda o: any : str(o));
+    } except Exception {
+        return str(data);
     }
+}
+
+"""Python's two-arg `round`, reached through an `any` alias: the 0.16
+checker cannot resolve the two-argument `round` overload (E1054)."""
+def round_to(value: float, digits: int) -> float {
+    return PY_ROUND(value, digits) as float;
 }
 
 def sha256_hex(text: str) -> str {
@@ -224,8 +232,8 @@ def cosine(a: list, b: list) -> float {
     na = 0.0;
     nb = 0.0;
     for i in range(len(a)) {
-        av = float(a[i]);
-        bv = float(b[i]);
+        av = float(a[i] as float);
+        bv = float(b[i] as float);
         dot += av * bv;
         na += av * av;
         nb += bv * bv;
@@ -238,16 +246,16 @@ def cosine(a: list, b: list) -> float {
 
 def as_float(value: any, fallback: float) -> float {
     try {
-        return float(value);
-    } except Exception as e {
+        return float(value as float);
+    } except Exception {
         return fallback;
     }
 }
 
 def as_int(value: any, fallback: int) -> int {
     try {
-        return int(value);
-    } except Exception as e {
+        return int(value as int);
+    } except Exception {
         return fallback;
     }
 }
@@ -256,24 +264,24 @@ def as_int(value: any, fallback: int) -> int {
 # Graph lookups
 # ---------------------------------------------------------------------------
 
-def all_devices(rt: any) -> list {
-    return [rt --> (`?Device)];
+def all_devices(rt: Root) -> list[Device] {
+    return [rt -->[?:Device]];
 }
 
-def all_workers(rt: any) -> list {
-    return [rt --> (`?Worker)];
+def all_workers(rt: Root) -> list[Worker] {
+    return [rt -->[?:Worker]];
 }
 
-def all_jobs(rt: any) -> list {
-    return [rt --> (`?Job)];
+def all_jobs(rt: Root) -> list[Job] {
+    return [rt -->[?:Job]];
 }
 
-def all_wallets(rt: any) -> list {
-    return [rt --> (`?Wallet)];
+def all_wallets(rt: Root) -> list[Wallet] {
+    return [rt -->[?:Wallet]];
 }
 
-def job_tasks(job: any) -> list {
-    tasks = [job ->:Contains:-> (`?Task)];
+def job_tasks(job: Job) -> list[Task] {
+    tasks = [job ->:Contains:->[?:Task]];
     ordered = [];
     for t in tasks {
         ordered.append(t);
@@ -295,8 +303,8 @@ def job_tasks(job: any) -> list {
     return ordered;
 }
 
-def task_attempts(task: any) -> list {
-    attempts = [task ->:AttemptedBy:-> (`?Attempt)];
+def task_attempts(task: Task) -> list[Attempt] {
+    attempts = [task ->:AttemptedBy:->[?:Attempt]];
     ordered = [];
     for a in attempts {
         ordered.append(a);
@@ -318,7 +326,7 @@ def task_attempts(task: any) -> list {
     return ordered;
 }
 
-def find_device(rt: any, hostname: str) -> any {
+def find_device(rt: Root, hostname: str) -> Device | None {
     for d in all_devices(rt) {
         if d.hostname == hostname {
             return d;
@@ -327,7 +335,7 @@ def find_device(rt: any, hostname: str) -> any {
     return None;
 }
 
-def find_worker(rt: any, worker_id: str) -> any {
+def find_worker(rt: Root, worker_id: str) -> Worker | None {
     for w in all_workers(rt) {
         if w.worker_id == worker_id or w.name == worker_id {
             return w;
@@ -336,8 +344,8 @@ def find_worker(rt: any, worker_id: str) -> any {
     return None;
 }
 
-def find_app(rt: any, app_id: str) -> any {
-    for a in [rt --> (`?Application)] {
+def find_app(rt: Root, app_id: str) -> Application | None {
+    for a in [rt -->[?:Application]] {
         if a.app_id == app_id {
             return a;
         }
@@ -345,7 +353,7 @@ def find_app(rt: any, app_id: str) -> any {
     return None;
 }
 
-def find_job(rt: any, job_id: str) -> any {
+def find_job(rt: Root, job_id: str) -> Job | None {
     for j in all_jobs(rt) {
         if j.job_id == job_id {
             return j;
@@ -354,8 +362,8 @@ def find_job(rt: any, job_id: str) -> any {
     return None;
 }
 
-def find_task(rt: any, task_id: str) -> list {
-    """Returns [task, job] or [] when unknown.""";
+"""Returns [task, job] or [] when unknown."""
+def find_task(rt: Root, task_id: str) -> list {
     for j in all_jobs(rt) {
         for t in job_tasks(j) {
             if t.task_id == task_id {
@@ -366,7 +374,7 @@ def find_task(rt: any, task_id: str) -> list {
     return [];
 }
 
-def running_attempt(task: any) -> any {
+def running_attempt(task: Task) -> Attempt | None {
     latest = None;
     for a in task_attempts(task) {
         if a.status == "running" {
@@ -376,48 +384,48 @@ def running_attempt(task: any) -> any {
     return latest;
 }
 
-def attempt_worker(attempt: any) -> any {
-    workers = [attempt ->:ExecutedBy:-> (`?Worker)];
+def attempt_worker(attempt: Attempt) -> Worker | None {
+    workers = [attempt ->:ExecutedBy:->[?:Worker]];
     if len(workers) > 0 {
         return workers[0];
     }
     return None;
 }
 
-def attempt_result(attempt: any) -> any {
-    results = [attempt ->:Produced:-> (`?Result)];
+def attempt_result(attempt: Attempt) -> Result | None {
+    results = [attempt ->:Produced:->[?:Result]];
     if len(results) > 0 {
         return results[0];
     }
     return None;
 }
 
-def result_verification(result: any) -> any {
-    checks = [result ->:CheckedBy:-> (`?Verification)];
+def result_verification(result: Result) -> Verification | None {
+    checks = [result ->:CheckedBy:->[?:Verification]];
     if len(checks) > 0 {
         return checks[0];
     }
     return None;
 }
 
-def task_payment(task: any) -> any {
-    payments = [task ->:SettledBy:-> (`?Payment)];
+def task_payment(task: Task) -> Payment | None {
+    payments = [task ->:SettledBy:->[?:Payment]];
     if len(payments) > 0 {
         return payments[0];
     }
     return None;
 }
 
-def worker_device(worker: any) -> any {
-    devices = [worker ->:HostedOn:-> (`?Device)];
+def worker_device(worker: Worker) -> Device | None {
+    devices = [worker ->:HostedOn:->[?:Device]];
     if len(devices) > 0 {
         return devices[0];
     }
     return None;
 }
 
-def worker_reputation(worker: any) -> any {
-    reps = [worker ->:RatedBy:-> (`?Reputation)];
+def worker_reputation(worker: Worker) -> Reputation {
+    reps = [worker ->:RatedBy:->[?:Reputation]];
     if len(reps) > 0 {
         return reps[0];
     }
@@ -426,7 +434,7 @@ def worker_reputation(worker: any) -> any {
     return rep;
 }
 
-def liveness(worker: any, now: float) -> str {
+def liveness(worker: Worker, now: float) -> str {
     delta = now - worker.last_seen;
     if delta > DEAD_AFTER {
         return "dead";
@@ -441,7 +449,7 @@ def liveness(worker: any, now: float) -> str {
 # Wallet / payment backend — v1 SimulatedLedger (spec §2.6)
 # ---------------------------------------------------------------------------
 
-def get_or_create_wallet(rt: any, owner: str, owner_name: str, seed: float) -> any {
+def get_or_create_wallet(rt: Root, owner: str, owner_name: str, seed: float) -> Wallet {
     for w in all_wallets(rt) {
         if w.owner == owner {
             return w;
@@ -458,21 +466,21 @@ def get_or_create_wallet(rt: any, owner: str, owner_name: str, seed: float) -> a
     return wallet;
 }
 
-def coordinator_wallet(rt: any) -> any {
+def coordinator_wallet(rt: Root) -> Wallet {
     return get_or_create_wallet(rt, "coordinator", "coordinator", COORDINATOR_WALLET_SEED);
 }
 
-def ledger_pay(rt: any, task: any, job: any, worker: any) -> any {
-    """PaymentBackend.pay(from_wallet, to_wallet, amount) -> Payment node.
+"""PaymentBackend.pay(from_wallet, to_wallet, amount) -> Payment node.
 
-    v1 backend is the SimulatedLedger: balances live in the graph, tx id is a
-    uuid. Swapping in a testnet backend only changes the body of this def.
-    """;
+v1 backend is the SimulatedLedger: balances live in the graph, tx id is a
+uuid. Swapping in a testnet backend only changes the body of this def.
+"""
+def ledger_pay(rt: Root, task: Task, job: Job, worker: Worker) -> Payment {
     src = coordinator_wallet(rt);
     dst = get_or_create_wallet(rt, worker.worker_id, worker.name, 0.0);
     amount = task.price_per_task;
-    src.balance = round(src.balance - amount, 6);
-    dst.balance = round(dst.balance + amount, 6);
+    src.balance = round_to(src.balance - amount, 6);
+    dst.balance = round_to(dst.balance + amount, 6);
     payment = Payment(
         payment_id=new_id("pay"),
         task_id=task.task_id,
@@ -491,7 +499,7 @@ def ledger_pay(rt: any, task: any, job: any, worker: any) -> any {
     return payment;
 }
 
-def bump_reputation(worker: any, ok: bool) -> dict {
+def bump_reputation(worker: Worker, ok: bool) -> dict {
     rep = worker_reputation(worker);
     if ok {
         rep.success += 1;
@@ -500,7 +508,7 @@ def bump_reputation(worker: any, ok: bool) -> dict {
     }
     total = rep.success + rep.failure;
     if total > 0 {
-        rep.score = round(float(rep.success) / float(total), 4);
+        rep.score = round_to(float(rep.success) / float(total), 4);
     }
     return {"worker_id": rep.worker_id, "success": rep.success, "failure": rep.failure, "score": rep.score};
 }
@@ -509,8 +517,8 @@ def bump_reputation(worker: any, ok: bool) -> dict {
 # Verification (architecture §7, spec §2.5)
 # ---------------------------------------------------------------------------
 
+"""Deterministic sample of at least one item."""
 def sample_items(items: list, sample_rate: float, seed: str) -> list {
-    """Deterministic sample of at least one item.""";
     if len(items) == 0 {
         return [];
     }
@@ -533,7 +541,7 @@ def sample_items(items: list, sample_rate: float, seed: str) -> list {
 
 def index_results(output: dict) -> dict {
     by_id = {};
-    for row in output.get("results", []) {
+    for row in output.get("results", []) as list {
         if isinstance(row, dict) and "id" in row {
             by_id[str(row["id"])] = row;
         }
@@ -541,20 +549,20 @@ def index_results(output: dict) -> dict {
     return by_id;
 }
 
-def recompute_embedding_items(model: str, items: list) -> list {
-    """TODO(verify-recompute): real coordinator-side recompute hook.
+"""TODO(verify-recompute): real coordinator-side recompute hook.
 
-    Integration will implement this by calling the same embedding runner the
-    sandbox uses (sentence-transformers `model`) and returning
-    [{"id": ..., "embedding": [...]}, ...]. While it returns an empty list the
-    verifier falls back to a structural check and says so in the detail block.
-    """;
+Integration will implement this by calling the same embedding runner the
+sandbox uses (sentence-transformers `model`) and returning
+[{"id": ..., "embedding": [...]}, ...]. While it returns an empty list the
+verifier falls back to a structural check and says so in the detail block.
+"""
+def recompute_embedding_items(model: str, items: list) -> list {
     return [];
 }
 
-def verify_noop(task: any, result: any, spec: dict) -> dict {
-    """recompute_sample for `noop`: recomputing an echo IS the echo.""";
-    items = task.payload.get("items", []);
+"""recompute_sample for `noop`: recomputing an echo IS the echo."""
+def verify_noop(task: Task, result: Result, spec: dict) -> dict {
+    items = task.payload.get("items", []) as list;
     by_id = index_results(result.output);
     rate = as_float(spec.get("sample_rate", 0.1), 0.1);
     picked = sample_items(items, rate, task.task_id);
@@ -590,8 +598,8 @@ def verify_noop(task: any, result: any, spec: dict) -> dict {
     };
 }
 
-def verify_embedding(task: any, result: any, spec: dict) -> dict {
-    items = task.payload.get("items", []);
+def verify_embedding(task: Task, result: Result, spec: dict) -> dict {
+    items = task.payload.get("items", []) as list;
     by_id = index_results(result.output);
     rate = as_float(spec.get("sample_rate", 0.1), 0.1);
     dim = as_int(task.payload.get("dim", EMBEDDING_DIM), EMBEDDING_DIM);
@@ -627,10 +635,10 @@ def verify_embedding(task: any, result: any, spec: dict) -> dict {
         }
         for item in picked {
             key = str(item.get("id", ""));
-            got = by_id.get(key, {});
-            want = expected_by_id.get(key, []);
+            got = by_id.get(key, {}) as dict;
+            want = expected_by_id.get(key, []) as list;
             if len(want) > 0 {
-                sim = cosine(got.get("embedding", []), want);
+                sim = cosine(got.get("embedding", []) as list, want);
                 compared += 1;
                 if sim < tolerance {
                     problems.append({"id": key, "reason": "cosine_below_tolerance",
@@ -664,7 +672,7 @@ def verify_embedding(task: any, result: any, spec: dict) -> dict {
     };
 }
 
-def verify_output_hash(task: any, result: any, spec: dict) -> dict {
+def verify_output_hash(task: Task, result: Result, spec: dict) -> dict {
     computed = result.output_hash;
     expected = spec.get("expected_hash", "");
     per_task = spec.get("expected_hashes", {});
@@ -691,8 +699,8 @@ def verify_output_hash(task: any, result: any, spec: dict) -> dict {
     };
 }
 
-def verify_structure(task: any, result: any, spec: dict) -> dict {
-    items = task.payload.get("items", []);
+def verify_structure(task: Task, result: Result, spec: dict) -> dict {
+    items = task.payload.get("items", []) as list;
     by_id = index_results(result.output);
     missing = [];
     for item in items {
@@ -709,8 +717,8 @@ def verify_structure(task: any, result: any, spec: dict) -> dict {
     };
 }
 
-def run_verification(job: any, task: any, result: any) -> any {
-    """Creates and links a Verification node for a Result.""";
+"""Creates and links a Verification node for a Result."""
+def run_verification(job: Job, task: Task, result: Result) -> Verification {
     spec = job.verification;
     if not isinstance(spec, dict) {
         spec = {};
@@ -738,7 +746,7 @@ def run_verification(job: any, task: any, result: any) -> any {
         verification_id=new_id("ver"),
         method=method,
         outcome="passed" if outcome["ok"] else "failed",
-        detail=outcome["detail"],
+        detail=outcome["detail"] as dict,
         checked_at=now_ts()
     );
     result +>:CheckedBy:+> ver;
@@ -749,7 +757,7 @@ def run_verification(job: any, task: any, result: any) -> any {
 # Job / task state machine
 # ---------------------------------------------------------------------------
 
-def recompute_job_status(job: any) -> str {
+def recompute_job_status(job: Job) -> str {
     tasks = job_tasks(job);
     if len(tasks) == 0 {
         return job.status;
@@ -782,7 +790,7 @@ def recompute_job_status(job: any) -> str {
     return job.status;
 }
 
-def job_progress(job: any) -> float {
+def job_progress(job: Job) -> float {
     tasks = job_tasks(job);
     if len(tasks) == 0 {
         return 0.0;
@@ -793,14 +801,14 @@ def job_progress(job: any) -> float {
             done += 1;
         }
     }
-    return round(float(done) / float(len(tasks)), 4);
+    return round_to(float(done) / float(len(tasks)), 4);
 }
 
-def requeue_task(job: any, task: any, worker_id: str, reason: str) -> dict {
-    """reassign_task: re-enter the task into scheduling, excluding the worker.
+"""reassign_task: re-enter the task into scheduling, excluding the worker.
 
-    Max MAX_ATTEMPTS attempts; after that the task — and the job — fail.
-    """;
+Max MAX_ATTEMPTS attempts; after that the task — and the job — fail.
+"""
+def requeue_task(job: Job, task: Task, worker_id: str, reason: str) -> dict {
     if worker_id != "" and worker_id not in task.excluded_workers {
         task.excluded_workers.append(worker_id);
     }
@@ -819,7 +827,7 @@ def requeue_task(job: any, task: any, worker_id: str, reason: str) -> dict {
             "attempts": task.attempt_count, "excluded_workers": task.excluded_workers};
 }
 
-def fail_attempt(job: any, task: any, attempt: any, reason: str) -> dict {
+def fail_attempt(job: Job, task: Task, attempt: Attempt, reason: str) -> dict {
     attempt.status = "failed";
     attempt.reason = reason;
     attempt.finished_at = now_ts();
@@ -837,14 +845,14 @@ def fail_attempt(job: any, task: any, attempt: any, reason: str) -> dict {
     return requeue_task(job, task, wid, reason);
 }
 
-def sweep_failures(rt: any, dead_after: float) -> dict {
-    """detect_failure + reassign_task, spec §2.4.
+"""detect_failure + reassign_task, spec §2.4.
 
-    Marks silent workers dead, fails their running attempts, fails attempts that
-    blew past wall_seconds + 60s, and re-queues the affected tasks. Safe and
-    cheap to call on every request — that is exactly what next_task/heartbeat do
-    so the network self-heals without a cron job.
-    """;
+Marks silent workers dead, fails their running attempts, fails attempts that
+blew past wall_seconds + 60s, and re-queues the affected tasks. Safe and
+cheap to call on every request — that is exactly what next_task/heartbeat do
+so the network self-heals without a cron job.
+"""
+def sweep_failures(rt: Root, dead_after: float) -> dict {
     now = now_ts();
     dead_workers = [];
     suspect_workers = [];
@@ -908,8 +916,8 @@ def sweep_failures(rt: any, dead_after: float) -> dict {
 # Contract B envelopes (architecture §5)
 # ---------------------------------------------------------------------------
 
-def task_envelope(task: any) -> dict {
-    """Task envelope handed to the worker, and by the worker to the sandbox.""";
+"""Task envelope handed to the worker, and by the worker to the sandbox."""
+def task_envelope(task: Task) -> dict {
     return {
         "task_id": task.task_id,
         "job_type": task.job_type,
@@ -922,7 +930,7 @@ def task_envelope(task: any) -> dict {
 # Contract A views (architecture §4)
 # ---------------------------------------------------------------------------
 
-def task_status_view(task: any) -> dict {
+def task_status_view(task: Task) -> dict {
     worker_name = "";
     attempts = task_attempts(task);
     if len(attempts) > 0 {
@@ -937,7 +945,7 @@ def task_status_view(task: any) -> dict {
     };
 }
 
-def job_status_view(job: any) -> dict {
+def job_status_view(job: Job) -> dict {
     recompute_job_status(job);
     tasks = [];
     for t in job_tasks(job) {
@@ -955,7 +963,7 @@ def job_status_view(job: any) -> dict {
     return view;
 }
 
-def merged_results(job: any) -> list {
+def merged_results(job: Job) -> list {
     out = [];
     for task in job_tasks(job) {
         for attempt in task_attempts(task) {
@@ -979,7 +987,7 @@ def merged_results(job: any) -> list {
     return out;
 }
 
-def job_receipt(job: any) -> dict {
+def job_receipt(job: Job) -> dict {
     tasks = job_tasks(job);
     verified = 0;
     total_paid = 0.0;
@@ -1009,19 +1017,19 @@ def job_receipt(job: any) -> dict {
     return {
         "tasks": len(tasks),
         "verified": verified,
-        "total_paid": round(total_paid, 6),
+        "total_paid": round_to(total_paid, 6),
         "currency": DEFAULT_CURRENCY,
         "payments": payments
     };
 }
 
-def audit_tree(job: any) -> dict {
+def audit_tree(job: Job) -> dict {
     tasks = [];
     for task in job_tasks(job) {
         attempts = [];
         for attempt in task_attempts(task) {
             res = attempt_result(attempt);
-            sandboxes = [attempt ->:RanInside:-> (`?Sandbox)];
+            sandboxes = [attempt ->:RanInside:->[?:Sandbox]];
             sandbox_view = None;
             if len(sandboxes) > 0 {
                 sandbox_view = {
@@ -1087,7 +1095,7 @@ def audit_tree(job: any) -> dict {
             "attempt_count": task.attempt_count,
             "excluded_workers": task.excluded_workers,
             "reason": task.reason,
-            "items": len(task.payload.get("items", [])),
+            "items": len(task.payload.get("items", []) as list),
             "attempts": attempts,
             "payment": payment_view
         });
@@ -1114,8 +1122,8 @@ def audit_tree(job: any) -> dict {
 # Partitioning (split_job)
 # ---------------------------------------------------------------------------
 
+"""Split a job payload into per-task payload slices."""
 def chunk_payload(payload: dict, partitioning: dict) -> list {
-    """Split a job payload into per-task payload slices.""";
     items = payload.get("items", None);
     strategy = str(partitioning.get("strategy", "chunk"));
     if not isinstance(items, list) or len(items) == 0 or strategy != "chunk" {
