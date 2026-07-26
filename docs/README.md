@@ -2,14 +2,14 @@
 
 JacGrid is a Jac-native distributed compute network. Applications submit jobs, JacGrid splits them into tasks, runs them across independent devices inside sandboxes, verifies the results, and pays successful workers with testnet cryptocurrency.
 
-The hackathon build runs across three Macs and powers one real application: **Sebastian's matching app**, which submits embedding jobs to the network and uses the returned vectors to match people.
+The hackathon build runs across three Macs and powers one real application: **Sebastian's matching app**, which supplies a versioned embedding workload, submits embedding jobs to the network, and uses the returned vectors to match people.
 
 ## How the pieces fit
 
 ```text
 ┌─────────────────────────────────────────────────────┐
-│  Matching Application (Sebastian)                   │
-│  profiles → embedding job → JacGrid → matches       │
+│  Matching Application + Workload (Sebastian)        │
+│  profiles → our embedding code → JacGrid → matches  │
 └───────────────────────┬─────────────────────────────┘
                         │  Job Submission API
 ┌───────────────────────▼─────────────────────────────┐
@@ -19,7 +19,7 @@ The hackathon build runs across three Macs and powers one real application: **Se
 └───────────────────────┬─────────────────────────────┘
                         │  Task Execution API
 ┌───────────────────────▼─────────────────────────────┐
-│  Sandbox Layer (Luke)                               │
+│  Sandbox Layer (Luke/Santhos)                               │
 │  restricted execution · allowlisted runtimes        │
 │  resource limits · execution metadata               │
 └─────────────────────────────────────────────────────┘
@@ -30,11 +30,12 @@ The hackathon build runs across three Macs and powers one real application: **Se
 | Document | Purpose |
 |---|---|
 | [architecture.md](architecture.md) | System architecture, Jac graph model, walkers, and the API contracts between the three workstreams |
+| [workload-ownership-decision.md](workload-ownership-decision.md) | Why the application owns its computation while Phong distributes it and Luke/Santhos run it safely |
 | [demo-plan.md](demo-plan.md) | The three-Mac live demo script, including failure recovery |
 | [phong-distributed/spec.md](phong-distributed/spec.md) | Distributed compute layer: coordinator, workers, scheduling, verification, payment |
 | [phong-distributed/tasks.md](phong-distributed/tasks.md) | Phong's task breakdown |
 | [luke-sandbox/spec.md](luke-sandbox/spec.md) | Sandbox layer: restricted task execution on worker Macs |
-| [luke-sandbox/tasks.md](luke-sandbox/tasks.md) | Luke's task breakdown |
+| [luke-sandbox/tasks.md](luke-sandbox/tasks.md) | Luke/Santhos task breakdown |
 | [sebastian-application/spec.md](sebastian-application/spec.md) | Matching application: profiles, embedding jobs, match results |
 | [sebastian-application/tasks.md](sebastian-application/tasks.md) | Sebastian's task breakdown |
 
@@ -44,13 +45,13 @@ The original concept document lives at the repo root: [`JacGrid_Concept.md`](../
 
 | Person | Workstream | Owns |
 |---|---|---|
-| **Phong** | Distributed compute | Coordinator, worker runtime, Jac graph, scheduling, heartbeats, failure recovery, verification, payment |
-| **Luke** | Sandbox | Restricted execution environment, allowlisted task runtimes, resource limits, execution metadata |
-| **Sebastian** | Application | Matching product: profile intake, embedding job submission, similarity matching, results UI |
+| **Phong** | Distributed compute | Coordinator, worker runtime, Jac graph, scheduling, heartbeats, failure recovery, verification orchestration, payment |
+| **Luke/Santhos** | Sandbox | Generic restricted execution environment, workload allowlist, resource limits, execution metadata |
+| **Sebastian** | Application + workload | Matching product plus the versioned embedding runner, its input/output contract, fixtures, and domain verification rules |
 
 ## Working agreements
 
-1. **Interfaces first.** The two API contracts in `architecture.md` (Job Submission API, Task Execution API) are frozen early. Each person builds against the contract, not against each other's code.
-2. **Mock before integrate.** Sebastian develops against a mock coordinator; Luke's sandbox is tested with a fake task before real ones; Phong stubs the sandbox with a plain subprocess until Luke's runner is ready.
+1. **Interfaces first.** The three contracts in `architecture.md` (Job Submission API, Task Execution API, Application Workload Contract) are frozen early. Each person builds against the contracts, not against another person's implementation.
+2. **Mock before integrate.** Sebastian develops against a mock coordinator; the Luke/Santhos sandbox is tested with a fake task before real ones; Phong stubs the sandbox with a plain subprocess until the Luke/Santhos runner is ready.
 3. **One integration branch.** Everyone merges to `main` frequently; integration checkpoints are listed in each tasks file.
 4. **The demo is the spec.** If a feature is not needed for the demo flow in `demo-plan.md`, it is out of scope for the hackathon.

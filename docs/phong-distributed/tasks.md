@@ -22,15 +22,15 @@ Ordered for dependency; each phase ends at a milestone from `spec.md` §4.
 
 ## Phase 3 — Economic loop (M4)
 
-- [ ] **P9. Embedding runner (stub)** — sentence-transformers (or MLX) runner invoked by the worker; produces Contract B result envelopes. *Coordinate with Luke: this same runner becomes his allowlisted sandbox image.*
-- [ ] **P10. `verify_result`** — `recompute_sample` with cosine ≥ 0.999; Verification nodes; failed verification re-queues + penalizes reputation.
+- [ ] **P9. Application workload integration** — keep `noop` as the platform fixture, then invoke Sebastian's immutable `connection-embedding:1.0.0` package through the same generic Contract B path. Do not implement a separate embedding algorithm. Coordinate with Luke/Santhos on package installation and invocation.
+- [ ] **P10. `verify_result`** — `recompute_sample` by re-invoking the job's exact workload version and applying its declared tolerance; create Verification nodes; failed verification re-queues and penalizes reputation.
 - [ ] **P11. `SimulatedLedger` + `release_payment`** — Wallet + Payment nodes, per-task receipts, frozen `price_per_task`.
 - [ ] **P12. `update_reputation`** — simple +1/−1 rolling score.
 - [ ] ✅ **Checkpoint M4:** embedding job → verified → paid, visible balances.
 
 ## Phase 4 — Integration & demo surface (M5–M6)
 
-- [ ] **P13. Swap in Luke's sandbox** — replace stub runner call with Contract B sandbox invocation. (Joint with Luke.)
+- [ ] **P13. Swap in the Luke/Santhos sandbox** — replace stub runner call with Contract B sandbox invocation. (Joint with Luke/Santhos.)
 - [ ] **P14. Point Sebastian at the live coordinator** — replace his mock; walk through Contract A together. (Joint with Sebastian.)
 - [ ] **P15. `audit_job` + dashboard endpoints** — `/api/audit/{job}` and `/api/network` returning the execution-graph JSON the dashboard renders.
 - [ ] **P16. Demo hardening** — pre-warm models, raw-IP config, hotspot fallback, record backup run video.
@@ -46,6 +46,6 @@ Ordered for dependency; each phase ends at a milestone from `spec.md` §4.
 
 | To | What | When |
 |---|---|---|
-| Sebastian | Contract A frozen + a mock/real endpoint to hit | End of Phase 1 |
-| Luke | Contract B envelopes frozen + the stub runner as reference implementation | End of Phase 1 |
+| Sebastian | Contract A frozen + a mock/real endpoint to hit; receive his versioned workload package and fixtures | Contract A by end of Phase 1; workload before P9 |
+| Luke/Santhos | Contract B envelopes frozen + `noop` as the generic reference implementation | End of Phase 1 |
 | Both | Live coordinator on the demo network | Phase 4 |

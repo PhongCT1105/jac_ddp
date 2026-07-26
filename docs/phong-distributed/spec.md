@@ -11,10 +11,10 @@ The distributed compute layer is JacGrid's core: the coordinator, the worker run
 - Coordinator service on Mac 1: job API, scheduler, monitor, verifier, payer, dashboard data.
 - Worker runtime on every Mac: registration, heartbeats, task pickup, sandbox invocation (Contract B), result return.
 - The Jac graph model and all walkers (see `../architecture.md` §3).
-- Verification (`recompute_sample` primary) and the payment backend.
+- Verification orchestration (`recompute_sample` primary) using the application-supplied immutable workload, and the payment backend.
 - The dashboard/audit API that the demo runs on.
 
-**Not responsible for:** what happens *inside* a task (Luke's sandbox) or what jobs mean to users (Sebastian's app).
+**Not responsible for:** the application-specific computation inside a workload (Sebastian), sandbox enforcement (Luke/Santhos), or what jobs mean to users (Sebastian's app).
 
 ---
 
@@ -45,12 +45,12 @@ loop:
   send heartbeat (every 5s, includes status)
   if idle: GET /api/tasks/next?worker=me
   if task received:
-      hand task envelope to sandbox        # Contract B — Luke's interface
+      hand task envelope to sandbox        # Contract B — Luke/Santhos interface
       wait for result envelope (with timeout = limits.wall_seconds + margin)
       POST result envelope to /api/tasks/{id}/result
 ```
 
-Until Luke's sandbox is ready, the worker calls a **stub runner**: a plain subprocess that executes the embedding workload with no isolation. The envelope shapes are identical, so swapping in the real sandbox is one line.
+Until the Luke/Santhos sandbox is ready, the worker calls a **stub runner** using the platform-owned `noop` fixture. When Sebastian's `connection-embedding:1.0.0` package is ready, the same worker interface invokes it first without isolation and then through the Luke/Santhos sandbox. Phong integrates the immutable workload package; he does not reimplement its embedding logic.
 
 ### 2.3 Scheduler
 
@@ -73,8 +73,8 @@ Selection logic in `select_worker`, first version:
 `verify_result` for `recompute_sample`:
 
 1. Pick `sample_rate` of the task's items (min 1).
-2. Recompute them locally on the coordinator (or dispatch to a verifier worker — stretch).
-3. Compare with cosine similarity ≥ 0.999 per sampled embedding (models are deterministic; tolerance covers float noise).
+2. Re-run the exact workload ID and version declared by the job locally on the coordinator (or dispatch it to a verifier worker — stretch).
+3. Compare using the numeric tolerance declared by that workload's immutable manifest.
 4. Pass → Verification node `passed`, trigger payment. Fail → task re-queued, worker reputation penalized, no payment.
 
 ### 2.6 Payment backend
@@ -107,8 +107,8 @@ Payment rules: pay only on passed verification; one Payment node per verified ta
 | M1 | Coordinator up; `noop` job submitted via curl; splits into tasks; single local worker completes them | Job lifecycle works end-to-end on one machine |
 | M2 | Three Macs registered; heartbeats visible; tasks distributed across all three | Real distribution |
 | M3 | Kill a worker mid-job; task reassigned; job still completes | Failure recovery (demo Beat 3) |
-| M4 | Embedding job type wired through stub runner; verification passes; simulated payments release | Full economic loop |
-| M5 | Luke's sandbox swapped in for the stub runner | Real isolation |
+| M4 | Sebastian's embedding workload wired through the generic runner; verification passes; simulated payments release | Full economic loop without application logic in the platform |
+| M5 | Luke/Santhos sandbox swapped in for the stub runner | Real isolation |
 | M6 | Sebastian's app submits the job instead of curl | Full product story |
 
 ---
