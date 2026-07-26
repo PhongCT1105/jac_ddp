@@ -50,6 +50,9 @@ glob STUB_RUNTIME: str = "stub-runner:v0";
 # tests/e2e_reassign.sh to kill a worker while it is holding a task.
 glob TASK_DELAY: float = float(os.environ.get("JACGRID_TASK_DELAY", "0"));
 glob EMBEDDING_DIM: int = int(os.environ.get("JACGRID_EMBEDDING_DIM", "384"));
+# "worker" (default) runs tasks; "sweeper" only drives detect_failures.
+glob MODE: str = os.environ.get("JACGRID_MODE", "worker");
+glob SWEEP_INTERVAL: float = float(os.environ.get("JACGRID_SWEEP_INTERVAL", "5"));
 
 # `any` aliases for Python builtins/objects the 0.16 checker cannot resolve:
 # two-arg round() trips E1054, and sys.stdout is typed "TextIO | Any".
@@ -332,8 +335,58 @@ def loop(worker_id: str) -> None {
     }
 }
 
+# ---------------------------------------------------------------------------
+# Sweeper mode — the out-of-process failure detector (spec §2.4)
+# ---------------------------------------------------------------------------
+
+"""Drive `detect_failures` on a timer from outside the coordinator process.
+
+spec §2.4 wants the failure sweep to run every 5s regardless of traffic. The
+coordinator cannot schedule that internally: jaclang's `@schedule` builtin does
+register background tasks on this stack, but a scheduled *walker* dies with
+"Invalid walker object" and a scheduled *function* runs in an isolated context
+whose graph writes are never committed (both verified live — see the long note
+in platform/coordinator/main.sv.jac).
+
+So the sweep is driven by an ordinary HTTP client instead, which commits through
+the normal request path. This mode is that client — one process per grid:
+
+    JACGRID_MODE=sweeper jac run main.jac
+
+It carries no worker identity and never executes tasks. Without it the grid
+still self-heals via the implicit sweeps inside next_task/heartbeat, but only
+while at least one worker is alive and polling; the sweeper covers the case
+where EVERY worker has died.
+"""
+def sweep_loop() -> None {
+    log("sweeper mode: calling detect_failures every " + str(SWEEP_INTERVAL) + "s at " + COORDINATOR);
+    loops = 0;
+    while True {
+        loops += 1;
+        if MAX_LOOPS > 0 and loops > MAX_LOOPS {
+            log("sweeper: max loops reached, exiting");
+            return;
+        }
+        reply = call("detect_failures", {});
+        if "error" in reply {
+            log("sweeper: detect_failures error: " + json.dumps(reply)[0:200]);
+        } else {
+            dead = reply.get("dead_workers", []) as list;
+            moved = reply.get("reassigned", []) as list;
+            if len(dead) > 0 or len(moved) > 0 {
+                log("sweeper: " + str(len(dead)) + " dead worker(s), "
+                    + str(len(moved)) + " task(s) requeued " + json.dumps(moved)[0:300]);
+            }
+        }
+        time.sleep(SWEEP_INTERVAL);
+    }
+}
+
 with entry {
-    if os.environ.get("JACGRID_WORKER_SELFTEST", "0") == "1" {
+    if MODE == "sweeper" {
+        sweep_loop();
+        log("sweeper stopped");
+    } elif os.environ.get("JACGRID_WORKER_SELFTEST", "0") == "1" {
         # Offline check of the runner + envelope shape (no coordinator needed).
         env = {"task_id": "t-selftest", "job_type": "noop",
                "payload": {"items": [{"id": "a", "text": "x"}]},

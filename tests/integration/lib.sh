@@ -91,6 +91,22 @@ start_coordinator() {
     [ -n "$ready" ] || fail "coordinator did not become ready on $BASE within 120s"
 }
 
+# start_sweeper <logfile> [extra env assignments...]
+# The out-of-process failure detector (spec §2.4). The coordinator cannot run
+# this internally — see the note in platform/coordinator/main.sv.jac.
+start_sweeper() {
+    local logfile="$1"; shift
+    ( cd "$WORKER_DIR" && \
+      env JACGRID_COORDINATOR="$BASE" \
+          JACGRID_KEY="$SECRET" \
+          JACGRID_MODE=sweeper \
+          WORKER_NAME="sweeper" \
+          "$@" \
+          "$JAC" run main.jac ) >"$logfile" 2>&1 &
+    WORKER_PIDS+=("$!")
+    echo "$!"
+}
+
 # start_worker <name> <hostname> <logfile> [extra env assignments...]
 start_worker() {
     local name="$1" host="$2" logfile="$3"; shift 3

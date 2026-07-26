@@ -24,11 +24,30 @@ Two things keep JacGrid on ONE graph:
 Real authorization is the shared secret in the `secret` body field (checked
 against JACGRID_KEY, default "jacgrid-dev-key") — see `auth_ok` below.
 
-Verified against a live `jac start` (jac-scale 0.2.31): anonymous callers and
-JWT-bearing callers both read and write the SAME coordinator graph, and neither
-needs to log in. The recommended client posture is still token-free — nothing in
-JacGrid needs a jac-scale identity, and per-node `grant(...)` calls would become
-necessary if this ever moves off `root.shared` onto per-user roots.
+THE SHARING GUARANTEE COMES FROM `root.shared`, NOT FROM `walker:pub`
+--------------------------------------------------------------------
+Be precise about this, because the general rule cuts the other way. The
+jac-sv-multi-user guide is explicit: "Anonymous callers land on the guest
+graph, token-holders on their own root — so a `:pub` 'global graph' isn't even
+one graph." That is true of `here` / `root`. It is NOT true of `root.shared`,
+which the same guide describes as the deployment's one public commons that
+"resolves to it from any request context".
+
+Verified live on jaclang 0.16.7 / jac-scale 0.2.31 (see report-A2 §Fix 3):
+registered and logged in a real user (`role=user`, its own `root_id`), then
+
+  * called `network_status` WITH `Authorization: Bearer <jwt>` — it saw the job
+    an anonymous caller had created (same `job_id`);
+  * called `register_worker` WITH the bearer token, then read `network_status`
+    back ANONYMOUSLY — the token-written worker was there.
+
+So token-bearing and anonymous callers do share this graph. The guarantee is
+load-bearing on one invariant: **every ability here must anchor on
+`root.shared`.** Any ability that touches `here` or `root` instead would land
+on the caller's own root and silently fragment the grid — an authenticated
+client must never assume shared state without `root.shared` or an explicit
+`grant(...)`. The recommended client posture stays token-free: nothing in
+JacGrid needs a jac-scale identity.
 
 Contracts: docs/architecture.md §4 (Contract A: create_job/get_job/
 get_job_result) and §5 (Contract B: next_task/submit_result envelopes).
@@ -474,21 +493,27 @@ walker:pub submit_result {
             disengage;
         }
         worker = attempt_worker(attempt);
-        envelope = self.result_envelope;
-        if not isinstance(envelope, dict) {
-            envelope = {};
+
+        # Contract B is enforced at the door. A result envelope without a
+        # well-formed mandatory `execution` block is a PROTOCOL VIOLATION, not
+        # a failed task: it is rejected outright, nothing enters the graph, and
+        # the Attempt is left untouched so the task stays `running` and the
+        # normal timeout / dead-worker sweep can reassign it.
+        check = validate_result_envelope(self.result_envelope);
+        if not check["ok"] {
+            report {"error": "protocol_violation",
+                    "task_id": task.task_id,
+                    "task_status": task.status,
+                    "attempt_id": attempt.attempt_id,
+                    "contract": "B (architecture.md §5 result envelope)",
+                    "detail": check["detail"],
+                    "note": "result discarded; the attempt is still running and will be reassigned on timeout"};
+            disengage;
         }
-        status = str(envelope.get("status", "error"));
-        output_raw = envelope.get("output", {});
-        output: dict = {"value": output_raw};
-        if isinstance(output_raw, dict) {
-            output = output_raw;
-        }
-        execution_raw = envelope.get("execution", {});
-        execution: dict = {};
-        if isinstance(execution_raw, dict) {
-            execution = execution_raw;
-        }
+        envelope = self.result_envelope as dict;
+        status = str(envelope["status"]);
+        output = envelope["output"] as dict;
+        execution = envelope["execution"] as dict;
         error_text = envelope.get("error", None);
         now = now_ts();
 
@@ -592,6 +617,41 @@ walker:pub detect_failures {
         report sweep_failures(grid, threshold);
     }
 }
+
+# ---------------------------------------------------------------------------
+# WHY THERE IS NO @schedule'd SWEEP HERE (spec §2.4 wants one every 5s)
+# ---------------------------------------------------------------------------
+# `@schedule` IS real on this stack: it is a jaclang builtin that stamps a
+# `schedule_spec` on its target, and at startup jac-scale scans loaded walkers
+# and functions for it ("Base Scheduler started with 1 static task(s)").
+# Both forms were tried live on jaclang 0.16.7 / jac-scale 0.2.31 and BOTH are
+# unusable for mutating the graph:
+#
+#   @schedule(interval=N) walker:pub ...  -> registers, then fails on EVERY
+#       tick with "Error executing task 'x': Invalid walker object".
+#       jac_scale/scheduler/impl/scheduler.impl.jac passes the walker *class*
+#       from `introspector._walkers` to spawn_walker, but `spawn` requires a
+#       walker *instance* (jaclang/jac0core/impl/runtime.impl.jac raises).
+#
+#   @schedule(interval=N) def:pub ...     -> registers AND executes (its print
+#       output appears, and it correctly READS the shared graph — it found the
+#       dead worker and the stranded task). But its WRITES never land: the
+#       scheduler runs each job in a deliberately isolated context
+#       (JScaleExecutionContext + ctx.mem.close(), "so concurrent jobs cannot
+#       ... interfere with in-flight HTTP requests"). Proof: it reported
+#       "1 dead worker(s), 1 task(s) requeued" on every single tick — the
+#       scheduler's own next tick, reading fresh, still saw the task as
+#       `running` — and `get_job` over HTTP never observed the requeue.
+#
+# So failure detection is driven from OUTSIDE the process instead, by a client
+# that hits the ordinary `detect_failures` endpoint on a timer and therefore
+# commits through the normal request path. Ship one with:
+#
+#     cd platform/worker && JACGRID_MODE=sweeper jac run main.jac
+#
+# (or any `while true; do curl .../walker/detect_failures; sleep 5; done`).
+# The implicit sweeps inside next_task/heartbeat remain as the in-band
+# fallback. See both READMEs.
 
 walker:pub audit_job {
     """Full execution tree: job -> tasks -> attempts -> worker/sandbox/result/

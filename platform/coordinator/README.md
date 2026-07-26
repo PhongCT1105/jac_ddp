@@ -73,9 +73,26 @@ first element of `data.reports`:
 with an error object in the report (`{"error": "unauthorized", ...}`). Clients
 must inspect the report, never the HTTP status code.
 
+### Why every caller sees one grid
+
 All coordinator state is anchored on `root.shared`, jac-scale's single public
-commons graph, so anonymous and authenticated callers all read and write the
-same grid.
+commons graph. Note the distinction — the general rule cuts the other way, and
+the `jac-sv-multi-user` guide says so plainly: *"Anonymous callers land on the
+guest graph, token-holders on their own root — so a `:pub` 'global graph' isn't
+even one graph."* That applies to `here` / `root`. `root.shared` is the
+exception the same guide documents: the one public commons that *"resolves to
+it from any request context"*.
+
+Verified live on jac-scale 0.2.31: a registered, logged-in user (own `root_id`)
+calling `network_status` with `Authorization: Bearer <jwt>` saw a job created
+anonymously, and a worker registered *with* that token was visible to a later
+anonymous read.
+
+**This holds only because every walker ability anchors on `root.shared`.** An
+ability that touched `here` or `root` would land on the caller's own root and
+silently fragment the grid. If you add a walker here, anchor it the same way;
+authenticated clients must not assume shared state without `root.shared` or an
+explicit `grant(...)`.
 
 ## Endpoints
 
@@ -140,6 +157,14 @@ curl -s -X POST localhost:8000/walker/network_status -H 'Content-Type: applicati
   same sweep explicitly for a scheduler or for the demo.
 - **Liveness uses coordinator receive time only** — worker clocks are never
   trusted.
+- **Contract B is enforced at the door.** `submit_result` rejects any envelope
+  that is missing `status` / `output` / `execution`, carries a status outside
+  `ok|error|timeout|limit_exceeded`, or ships an `execution` block missing any
+  of `runtime`, `started_at`, `finished_at`, `peak_memory_mb`, `cpu_seconds`,
+  `exit_code`. The reply is `{"error": "protocol_violation", ...}` listing the
+  missing fields. Nothing enters the graph and the Attempt is left untouched,
+  so the task stays `running` and is reassigned by the normal timeout path — a
+  malformed submission can never be verified or paid.
 - **`price_per_task` is frozen on the Task node at creation**; `create_job`
   rejects a submission whose `price_per_task × task_count` exceeds
   `budget.max_total`.
@@ -153,9 +178,40 @@ curl -s -X POST localhost:8000/walker/network_status -H 'Content-Type: applicati
   hook (`recompute_embedding_items`) for the real model recompute at
   integration. `output_hash` is fully implemented.
 
+## Run a sweeper alongside it (recommended)
+
+Spec §2.4 wants the failure sweep every 5s regardless of traffic. The
+coordinator **cannot** schedule that internally on this stack — see the long
+note at the top of `main.sv.jac`: jaclang's `@schedule` builtin does register
+background tasks, but a scheduled *walker* fails every tick with
+`Invalid walker object`, and a scheduled *function* runs in a deliberately
+isolated context whose graph writes are never committed. Both were tried live.
+
+So drive the sweep from outside the process, through the ordinary endpoint:
+
+```bash
+cd platform/worker && JACGRID_MODE=sweeper ../../.venv/bin/jac run main.jac
+```
+
+or equivalently
+
+```bash
+while true; do
+  curl -s -X POST localhost:8000/walker/detect_failures \
+    -H 'Content-Type: application/json' -d '{"secret":"jacgrid-dev-key"}' >/dev/null
+  sleep 5
+done
+```
+
+One sweeper per grid. Without it the network still self-heals via the implicit
+sweeps inside `next_task`/`heartbeat` — but only while at least one worker is
+alive and polling. The sweeper covers the case where **every** worker has died.
+
 ## Tests
 
 ```bash
-bash tests/integration/e2e_noop.sh      # M1: full lifecycle, verified + paid
-bash tests/integration/e2e_reassign.sh  # M3: kill a worker, task reassigned
+bash tests/integration/e2e_noop.sh       # M1: full lifecycle, verified + paid
+bash tests/integration/e2e_reassign.sh   # M3: kill a worker, task reassigned
+bash tests/integration/e2e_sweeper.sh    # §2.4: heals with NO worker alive
+bash tests/integration/e2e_contract_b.sh # §5: malformed envelopes rejected
 ```

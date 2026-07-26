@@ -38,6 +38,27 @@ different `WORKER_NAME`s.
 | `JACGRID_EXIT_WHEN_IDLE` | `0` | `1` = exit after `JACGRID_IDLE_LIMIT` idle polls (tests) |
 | `JACGRID_IDLE_LIMIT` | `30` | idle polls before exiting when the above is set |
 | `JACGRID_WORKER_SELFTEST` | `0` | `1` runs the offline runner self-test instead of joining |
+| `JACGRID_MODE` | `worker` | `sweeper` = run the failure-sweep loop instead of executing tasks |
+| `JACGRID_SWEEP_INTERVAL` | `5` | sweeper mode: seconds between `detect_failures` calls |
+
+## Sweeper mode
+
+```bash
+cd platform/worker && JACGRID_MODE=sweeper ../../.venv/bin/jac run main.jac
+```
+
+Spec §2.4 wants the failure sweep to run every 5s regardless of traffic. The
+coordinator cannot schedule that internally on this stack: jaclang's
+`@schedule` builtin does register background tasks, but a scheduled *walker*
+dies every tick with `Invalid walker object`, and a scheduled *function* runs in
+an isolated context whose graph writes are never committed (both verified live —
+see the note in `platform/coordinator/main.sv.jac`).
+
+Sweeper mode is the out-of-process substitute: a plain HTTP client calling
+`detect_failures` on a timer, which commits through the normal request path. It
+carries no worker identity and never executes tasks. Run **one per grid**.
+Without it the network still self-heals via the implicit sweeps inside
+`next_task`/`heartbeat`, but only while some worker is alive and polling.
 
 ## The loop
 

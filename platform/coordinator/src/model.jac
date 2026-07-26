@@ -33,6 +33,9 @@ glob DEAD_AFTER: float = float(os.environ.get("JACGRID_DEAD_AFTER", "30"));
 
 glob MAX_ATTEMPTS: int = int(os.environ.get("JACGRID_MAX_ATTEMPTS", "3"));
 
+# How often the background scheduler runs the failure sweep (spec §2.4: 5s).
+glob SWEEP_INTERVAL: float = float(os.environ.get("JACGRID_SWEEP_INTERVAL", "5"));
+
 glob DEFAULT_LIMITS: dict = {
     "cpu_seconds": 120,
     "memory_mb": 2048,
@@ -924,6 +927,83 @@ def task_envelope(task: Task) -> dict {
         "payload": task.payload,
         "limits": task.limits
     };
+}
+
+"""Fields architecture.md §5 declares mandatory inside `execution`."""
+glob REQUIRED_EXECUTION_FIELDS: list = [
+    "runtime", "started_at", "finished_at", "peak_memory_mb", "cpu_seconds", "exit_code"
+];
+
+glob REQUIRED_ENVELOPE_FIELDS: list = ["status", "output", "execution"];
+
+glob ALLOWED_RESULT_STATUS: list = ["ok", "error", "timeout", "limit_exceeded"];
+
+"""Validate a Contract B result envelope before it is allowed into the graph.
+
+architecture.md §5: "The `execution` block is mandatory — it feeds the Sandbox
+and Attempt nodes in the Jac graph and the audit timeline." A submission that
+omits it, or ships it malformed, is a PROTOCOL VIOLATION, not a failed task:
+we cannot audit or bill an execution we have no metadata for. The caller
+rejects such a submission without touching the Attempt, so the task stays
+`running` and the normal timeout/dead-worker path can reassign it.
+
+Returns {"ok": bool, "detail": {...}}.
+"""
+def validate_result_envelope(envelope: any) -> dict {
+    if not isinstance(envelope, dict) {
+        return {"ok": False, "detail": {"reason": "result_envelope must be an object",
+                                        "actual_type": type(envelope).__name__}};
+    }
+    env = envelope as dict;
+    missing_top = [];
+    for key in REQUIRED_ENVELOPE_FIELDS {
+        if key not in env {
+            missing_top.append(key);
+        }
+    }
+    if len(missing_top) > 0 {
+        return {"ok": False,
+                "detail": {"reason": "result envelope is missing mandatory fields",
+                           "missing": missing_top,
+                           "required": REQUIRED_ENVELOPE_FIELDS}};
+    }
+    status = env["status"];
+    if not isinstance(status, str) or str(status) not in ALLOWED_RESULT_STATUS {
+        return {"ok": False,
+                "detail": {"reason": "status must be one of the Contract B values",
+                           "actual": status, "allowed": ALLOWED_RESULT_STATUS}};
+    }
+    if not isinstance(env["output"], dict) {
+        return {"ok": False,
+                "detail": {"reason": "output must be an object",
+                           "actual_type": type(env["output"]).__name__}};
+    }
+    execution = env["execution"];
+    if not isinstance(execution, dict) {
+        return {"ok": False,
+                "detail": {"reason": "the execution block is mandatory and must be an object",
+                           "actual_type": type(execution).__name__,
+                           "required_fields": REQUIRED_EXECUTION_FIELDS}};
+    }
+    exec_dict = execution as dict;
+    missing_exec = [];
+    for key in REQUIRED_EXECUTION_FIELDS {
+        if key not in exec_dict {
+            missing_exec.append(key);
+        }
+    }
+    if len(missing_exec) > 0 {
+        return {"ok": False,
+                "detail": {"reason": "the execution block is missing mandatory fields",
+                           "missing": missing_exec,
+                           "required_fields": REQUIRED_EXECUTION_FIELDS}};
+    }
+    if not isinstance(exec_dict["runtime"], str) or str(exec_dict["runtime"]) == "" {
+        return {"ok": False,
+                "detail": {"reason": "execution.runtime must be a non-empty string",
+                           "actual": exec_dict["runtime"]}};
+    }
+    return {"ok": True, "detail": {"execution_fields": REQUIRED_EXECUTION_FIELDS}};
 }
 
 # ---------------------------------------------------------------------------
