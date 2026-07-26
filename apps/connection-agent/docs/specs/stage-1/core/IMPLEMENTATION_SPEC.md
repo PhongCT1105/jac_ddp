@@ -122,7 +122,7 @@ the second panel review.
 
 | Reviewer role | Reviewer/task | Finding | Severity | Resolution |
 |---|---|---|---|---|
-| Current-Jac expert | `/root/implementation_jac_review` | Missing required report/review evidence; compute boundary initially exposed the adapter directly | Blocking / Important | Added this evidence and report; `FixtureComputeBoundary.embed` now owns typed invocation. Focused re-review requested. |
+| Current-Jac expert | `/root/implementation_jac_review` | Missing required report/review evidence; compute boundary initially exposed the adapter directly | Blocking / Important | Added this evidence and report; `FixtureComputeBoundary.embed` now owns typed invocation. Focused re-review: ready. |
 | Architecture/boundary reviewer | `/root/implementation_arch_review` | Missing required report/review evidence | Blocking | Added this report and recorded final checks. Runtime lifecycle/auth/idempotency review was ready. |
 | Lifecycle, authorization, idempotency specialist | `/root/implementation_arch_review` | Scoped keys, immutable retry response, canonical match/thread, safe thread access, reset | Important | Confirmed conformant by reviewer and deterministic integration coverage. |
 
@@ -130,7 +130,7 @@ the second panel review.
 
 `/root/implementation_arch_review` reviewed the finished behavior and returned
 runtime **ready** after successful Jac format/check/test evidence; its only
-blocker was the mandatory handoff artifact, resolved here. The Jac reviewer
-confirmed Jac-native source and compiler evidence, required a behavioral
-compute boundary, and that correction is included. Final gate reruns are
-recorded in the handoff report.
+blocker was the mandatory handoff artifact, resolved here.
+`/root/implementation_jac_review` rechecked the behavioral boundary, format,
+compiler, diff, and evidence after correction and returned **ready**. Final
+gate reruns are recorded in the handoff report.
