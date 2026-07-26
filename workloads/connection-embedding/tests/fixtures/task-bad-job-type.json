@@ -1,0 +1,6 @@
+{
+  "task_id": "t-fixture-bad",
+  "job_type": "training_shard",
+  "payload": {"items": [{"id": "x", "text": "irrelevant"}]},
+  "limits": {"cpu_seconds": 120, "memory_mb": 2048, "wall_seconds": 180, "network": "none"}
+}

@@ -1,0 +1,14 @@
+[project]
+name = "connection-embedding"
+version = "1.0.0"
+description = "Versioned embedding workload supplied by the connection-agent app (Contract C) — invoked generically by the JacGrid sandbox."
+entry-point = "src/embed.jac"
+kind = "cli"
+
+[dependencies]
+sentence-transformers = "~=5.6"
+torch = "~=2.13"
+numpy = "~=2.5"
+
+[test]
+directory = "src"
