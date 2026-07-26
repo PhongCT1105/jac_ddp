@@ -70,12 +70,27 @@ sandbox/work/*
 !sandbox/work/.gitkeep
 
 # Editor / OS noise
+*.swo
+.superpowers/
+__jac_gen__/
+*.session
+
+# Secrets / keys
+*.pem
+*.key
+
+# JavaScript build state
+node_modules/
+coverage/
+
+# Local service and model state
+.supabase/
+supabase/.temp/
+.cache/
+*.log
+
+# Editor / OS noise
 .DS_Store
 .idea/
 .vscode/
 *.swp
-*.swo
-.superpowers/
-.venv/
-__jac_gen__/
-*.session

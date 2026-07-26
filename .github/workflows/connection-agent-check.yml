@@ -1,0 +1,35 @@
+name: Connection Agent check
+
+on:
+  pull_request:
+    paths:
+      - "apps/connection-agent/**"
+      - "workloads/connection-embedding/**"
+      - "docs/specs/CONNECTION_AGENT_JACGRID_BOUNDARIES.md"
+      - ".github/workflows/connection-agent-check.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/connection-agent/**"
+      - "workloads/connection-embedding/**"
+      - "docs/specs/CONNECTION_AGENT_JACGRID_BOUNDARIES.md"
+      - ".github/workflows/connection-agent-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Jac 0.34.6
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/jaseci-labs/jaseci/main/scripts/install.sh \
+            | bash -s -- --version 0.34.6
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Run Connection Agent quality gate
+        run: ./apps/connection-agent/scripts/check.sh
