@@ -1,0 +1,6 @@
+{
+  "task_id": "t-net-1",
+  "job_type": "noop",
+  "payload": {"mode": "network"},
+  "limits": {"cpu_seconds": 20, "memory_mb": 256, "wall_seconds": 15, "network": "none"}
+}

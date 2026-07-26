@@ -1,0 +1,37 @@
+{
+  "name": "noop-runner",
+  "version": "1.0.0",
+  "entrypoint": "runner.jac",
+  "model": null,
+  "dependencies": {},
+  "input_schema": {
+    "mode": {
+      "type": "string",
+      "enum": ["echo", "crash", "hang", "memory_hog", "network"],
+      "default": "echo"
+    },
+    "value": {"type": "any"}
+  },
+  "output_schema": {
+    "echo": {"type": "object"}
+  },
+  "resource_requirements": {
+    "cpu_seconds": 30,
+    "memory_mb": 256,
+    "wall_seconds": 20
+  },
+  "verification": {
+    "tolerance": 0.0
+  },
+  "fixtures": {
+    "echo_default": {
+      "input": {"payload": {"value": 42}},
+      "expected_output": {"echo": {"value": 42}}
+    },
+    "echo_explicit": {
+      "input": {"payload": {"mode": "echo", "value": "hello"}},
+      "expected_output": {"echo": {"mode": "echo", "value": "hello"}}
+    }
+  },
+  "_notes": "Built-in platform-owned fixture workload (sandbox/fixtures/noop) — not an application workload. Used to prove the generic invocation mechanism and to drive the harness's own limit-enforcement tests via payload.mode (crash/hang/memory_hog) without needing a second fixture. Conforms to the Contract C manifest shape (contracts/workload/v1/workload.json) so it exercises the exact same registry/invocation path a real workload like connection-embedding will use."
+}

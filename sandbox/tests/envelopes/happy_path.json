@@ -1,0 +1,6 @@
+{
+  "task_id": "t-happy-1",
+  "job_type": "noop",
+  "payload": {"mode": "echo", "value": 42, "items": [{"id": "profile-001", "text": "hello"}]},
+  "limits": {"cpu_seconds": 20, "memory_mb": 256, "wall_seconds": 15, "network": "none"}
+}

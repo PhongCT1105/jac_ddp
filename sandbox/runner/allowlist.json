@@ -1,0 +1,8 @@
+{
+  "_comment": "Approved job_type -> workload mapping (Contract B `job_type` -> Contract C workload). Paths are relative to the repo root. To approve a new workload (e.g. the real connection-embedding package), add one entry here — no sandbox code changes needed.",
+  "noop": {
+    "workload_id": "noop-runner",
+    "version": "1.0.0",
+    "manifest": "sandbox/fixtures/noop/1.0.0/workload.json"
+  }
+}

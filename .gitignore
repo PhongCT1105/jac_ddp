@@ -65,6 +65,10 @@ temp/
 *.xz
 *.7z
 
+# Sandbox per-task scratch workdirs (created + wiped by sandbox/runner/harness.jac)
+sandbox/work/*
+!sandbox/work/.gitkeep
+
 # Editor / OS noise
 .DS_Store
 .idea/
