@@ -51,6 +51,9 @@ implemented before code review. `/root/implementation_arch_review` found the
 runtime implementation ready and required this report/evidence. 
 `/root/implementation_jac_review` verified Jac-native source and requested a
 behavioral compute boundary; Core now calls `FixtureComputeBoundary.embed`.
+Evaluation follow-up review by `/root/evaluation_contract_review` was ready;
+`/root/evaluation_jac_review` required removal of a provider job ID from the
+new evidence and then returned ready after the aggregate-only correction.
 
 ## Jac-native evidence
 
@@ -65,8 +68,22 @@ The façade takes dependencies through `DemoApp(dependencies=...)`; the default
 factory wires the released fixture profile source, `MockJacGrid`, and fixture
 intelligence boundary. The compute dependency exposes `embed(items, key)`, so
 future compatible fakes/adapters replace the boundary without moving lifecycle
-rules out of Core. The contract additions are additive `InterestResult` and
-`ThreadView` response objects.
+rules out of Core. The contract additions are additive `InterestResult`,
+`ThreadView`, and `EmbeddingRetrievalEvidence` response objects.
+
+### Evaluation regression follow-up
+
+Evaluation review findings were incorporated as Core regression input. The
+façade retains actor/operation-scoped idempotency and stores the original
+interest response, so Alice's retry after Bob opens still returns `match =
+null`. Thread reads and writes call the shared safe authorization gate before
+replay and use only `thread_forbidden` for absent or unauthorized threads.
+
+`Suggestion.embedding_evidence` is an additive, safe contract observation for
+the evaluator: lifecycle plus submitted-item, recombined-result, and
+eligible-candidate counts. It demonstrates full-batch recombination before
+whole-pool retrieval without returning profile Markdown, vectors, hidden
+decisions, provider IDs, provider internals, or lifecycle implementation state.
 
 ## Deferred and known limitations
 

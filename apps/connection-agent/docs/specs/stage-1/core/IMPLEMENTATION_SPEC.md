@@ -52,6 +52,10 @@ Demo command: `./apps/connection-agent/scripts/run-demo.sh --mock`.
   pair/match/thread transition to `InMemoryLifecycle`, and changes the
   suggestion terminal state only after a valid decision. One-sided opens return
   no match and reveal no reverse state.
+- Each returned suggestion includes additive `EmbeddingRetrievalEvidence` with
+  lifecycle plus submitted, recombined-result, and eligible-candidate counts.
+  It proves complete-batch recombination to evaluators without exposing vectors,
+  profile text, hidden decisions, provider IDs, or adapter internals.
 - `load_thread` maps absent and nonparticipant thread accesses to the same
   `thread_forbidden` failure. `send_message` validates membership before
   invoking the lifecycle primitive so direct-ID guessing remains non-disclosing.
@@ -125,6 +129,8 @@ the second panel review.
 | Current-Jac expert | `/root/implementation_jac_review` | Missing required report/review evidence; compute boundary initially exposed the adapter directly | Blocking / Important | Added this evidence and report; `FixtureComputeBoundary.embed` now owns typed invocation. Focused re-review: ready. |
 | Architecture/boundary reviewer | `/root/implementation_arch_review` | Missing required report/review evidence | Blocking | Added this report and recorded final checks. Runtime lifecycle/auth/idempotency review was ready. |
 | Lifecycle, authorization, idempotency specialist | `/root/implementation_arch_review` | Scoped keys, immutable retry response, canonical match/thread, safe thread access, reset | Important | Confirmed conformant by reviewer and deterministic integration coverage. |
+| Current-Jac expert | `/root/evaluation_jac_review` | Evaluation evidence initially exposed a provider job ID | Blocking | Removed the ID; additive evidence is aggregate-only. Focused re-review: ready. |
+| Architecture/evaluation reviewer | `/root/evaluation_contract_review` | Verify all evaluation blockers and operation-namespaced idempotency | Important | Added complete-pool evidence and same-literal-key cross-operation regression; reviewer ready. |
 
 ### Implementation review verdict
 
@@ -134,3 +140,6 @@ blocker was the mandatory handoff artifact, resolved here.
 `/root/implementation_jac_review` rechecked the behavioral boundary, format,
 compiler, diff, and evidence after correction and returned **ready**. Final
 gate reruns are recorded in the handoff report.
+Evaluation follow-up reviewers `/root/evaluation_jac_review` and
+`/root/evaluation_contract_review` both returned **ready** after the aggregate
+evidence and operation-namespace regression were finalized.

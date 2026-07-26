@@ -9,6 +9,7 @@ import from src.contracts.models {
     Actor,
     CandidateReference,
     CardSnapshot,
+    EmbeddingRetrievalEvidence,
     EmbeddingBatchResult,
     EmbeddingItem,
     InterestDecision,
@@ -202,6 +203,17 @@ def clone_suggestion(suggestion: Suggestion) -> Suggestion {
         headline=suggestion.card.headline,
         reasons=[reason for reason in suggestion.card.reasons],
     );
+    evidence: EmbeddingRetrievalEvidence | None = None;
+    if suggestion.embedding_evidence is not None {
+        evidence = EmbeddingRetrievalEvidence(
+            embedding_states=[
+                state for state in suggestion.embedding_evidence.embedding_states
+            ],
+            submitted_item_count=suggestion.embedding_evidence.submitted_item_count,
+            recombined_result_count=suggestion.embedding_evidence.recombined_result_count,
+            eligible_candidate_count=suggestion.embedding_evidence.eligible_candidate_count,
+        );
+    }
     return Suggestion(
         suggestion_id=suggestion.suggestion_id,
         pair_id=suggestion.pair_id,
@@ -209,6 +221,7 @@ def clone_suggestion(suggestion: Suggestion) -> Suggestion {
         subject_id=suggestion.subject_id,
         card=card,
         state=suggestion.state,
+        embedding_evidence=evidence,
     );
 }
 
@@ -333,6 +346,13 @@ def request_next_suggestion(
     or suggestion.card.pair_id != suggestion.pair_id {
         raise ValueError("internal_error");
     }
+    evidence = EmbeddingRetrievalEvidence(
+        embedding_states=[state for state in embedding.states],
+        submitted_item_count=len(items),
+        recombined_result_count=embedding.item_count,
+        eligible_candidate_count=len(pool) - 1,
+    );
+    suggestion.embedding_evidence = evidence;
     stored: Suggestion = clone_suggestion(suggestion);
     app.suggestions_by_id[stored.suggestion_id] = stored;
     app.active_suggestion_by_viewer[viewer.actor_id] = stored.suggestion_id;

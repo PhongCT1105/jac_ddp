@@ -34,6 +34,12 @@ test "frozen facade operations complete the private fixture journey" {
     assert alice_card.viewer_id == alice.actor_id;
     assert alice_card.subject_id == bob.actor_id;
     assert alice_card.card.viewer_id == alice.actor_id;
+    assert alice_card.embedding_evidence is not None;
+    evidence = alice_card.embedding_evidence;
+    assert evidence.submitted_item_count == 31;
+    assert evidence.recombined_result_count == 31;
+    assert evidence.eligible_candidate_count == 30;
+    assert evidence.embedding_states == ["queued", "running", "verifying", "complete"];
     first: InterestResult = record_interest(
         app, alice, alice_card.suggestion_id, "open", "a-open"
     );
@@ -89,12 +95,12 @@ test "facade retries preserve original results and scope keys" {
     ).match is None;
     matched_record = second.match;
     first_message = send_message(
-        app, alice, matched_record.thread_id, "Hello", "shared-message"
+        app, alice, matched_record.thread_id, "Hello", "shared-open"
     );
     assert send_message(
-        app, alice, matched_record.thread_id, "Hello", "shared-message"
+        app, alice, matched_record.thread_id, "Hello", "shared-open"
     ).message_id == first_message.message_id;
-    _ = send_message(app, bob, matched_record.thread_id, "Hi", "shared-message");
+    _ = send_message(app, bob, matched_record.thread_id, "Hi", "shared-open");
     assert len(load_thread(app, alice, matched_record.thread_id).messages) == 2;
     expect_value_error(
         lambda { request_next_suggestion(app, alice, "changed", "shared-key"); },
@@ -108,7 +114,7 @@ test "facade retries preserve original results and scope keys" {
     );
     expect_value_error(
         lambda { send_message(
-            app, alice, matched_record.thread_id, "Changed", "shared-message"
+            app, alice, matched_record.thread_id, "Changed", "shared-open"
         ); },
         "idempotency_conflict",
     );
