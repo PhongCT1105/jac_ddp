@@ -1,5 +1,9 @@
 # Objective 04: Evaluation and Quality
 
+> **Stage 2/3 backlog:** For the current showable product, implement only
+> [`../stage-1/handoffs/04_EVALUATION_QUALITY.md`](../stage-1/handoffs/04_EVALUATION_QUALITY.md).
+> Do not run E1–E7 as a sequential Stage 1 queue.
+
 **Session:** Implementation agent 4
 
 **Goal:** Build a reproducible evaluation laboratory that exercises the real application core, identifies failures by layer, and proves fixture tooling cannot affect production.

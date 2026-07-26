@@ -2,6 +2,12 @@
 
 This document divides the hackathon build among several Codex sessions. It defines the order of the work and the contracts that the parts share.
 
+> **Current execution cut:** Implement
+> [`STAGE_1_PRODUCT.md`](STAGE_1_PRODUCT.md) through the five launch-ready
+> [`stage-1` handoffs](stage-1/README.md). The detailed C/D/I/U/E sequences in
+> this document are the Stage 2/3 backlog, not instructions to complete six to
+> eight specs before producing a demo.
+
 ## 1. Build strategy
 
 Connection Agent should be built as one application core with several adapters around it.
@@ -18,13 +24,20 @@ Evaluation laboratory -----------+             +-- Jac intelligence
 
 The web experience, public MCP server, and evaluation laboratory must not each implement profile or matching rules. They call the same application operations. This is what allows separate Codex sessions to work against fakes, merge later, and still produce one product.
 
-Development has three stages:
+Development has four stopping points:
 
-1. **Foundation, sequential:** establish the repository, contracts, boundaries, and a thin walking skeleton.
-2. **Parallel workstreams:** data/integrations, intelligence, experience, and evaluation proceed in separate worktrees against the shared contracts.
-3. **Continuous integration:** merge small vertical increments throughout the build rather than joining completed subsystems at the end.
+1. **Foundation — complete:** repository, contracts, boundaries, fakes, and the terminal walking skeleton.
+2. **Stage 1 showable local product — current:** five parallel sessions each deliver one reviewed handoff; orchestration consolidates them into the complete Jac web demo.
+3. **Stage 2 integrated product:** replace selected fakes with Supabase, phone identity, live-compatible JacGrid, configured AI, and realtime delivery.
+4. **Stage 3 hardened product:** production failure recovery, complete evaluation, accessibility/polish, deployment, and optional capabilities.
 
-The recommended maximum is five concurrent Codex sessions: one integration lead, who also owns core orchestration, and four implementation workstreams. If only four sessions are practical, the integration lead also owns the data/integrations workstream.
+Stage 1 remains green and showable before Stage 2 begins. If time ends after any
+stopping point, the preceding product still works.
+
+The Stage 1 launch uses five implementation sessions on isolated branches plus
+one non-editing orchestration/consolidation checkout on `main`. If fewer sessions
+are practical, omit Data and Integrations first because Stage 1 already has
+foundation fakes; do not combine unrelated writable paths casually.
 
 ## 2. Product cut line
 

@@ -1,5 +1,9 @@
 # Objective 03: Product Experience
 
+> **Stage 2/3 backlog:** For the current showable product, implement only
+> [`../stage-1/handoffs/03_PRODUCT_EXPERIENCE.md`](../stage-1/handoffs/03_PRODUCT_EXPERIENCE.md).
+> Do not run U1–U7 as a sequential Stage 1 queue.
+
 **Session:** Implementation agent 3
 
 **Goal:** Build the responsive Jac first-party experience for profile conversation, suggestions, private consent, matches, and human chat against released operations and fake handlers first.

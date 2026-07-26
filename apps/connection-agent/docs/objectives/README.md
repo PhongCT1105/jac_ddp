@@ -1,6 +1,11 @@
 # Parallel objective packets
 
-These packets define the five concurrent Connection Agent sessions after the foundation commit is merged.
+> **Backlog, not current launch instructions.** Stage 1 sessions implement the
+> single launch-ready handoffs in [`../stage-1/README.md`](../stage-1/README.md).
+> The packets below preserve the complete Stage 2/3 roadmap.
+
+These packets define the longer-term Connection Agent objectives after the
+showable Stage 1 product is consolidated.
 
 | Session | Objective | Packet |
 |---|---|---|
@@ -10,6 +15,7 @@ These packets define the five concurrent Connection Agent sessions after the fou
 | 4 | Product Experience | [`03_PRODUCT_EXPERIENCE.md`](03_PRODUCT_EXPERIENCE.md) |
 | 5 | Evaluation and Quality | [`04_EVALUATION_AND_QUALITY.md`](04_EVALUATION_AND_QUALITY.md) |
 
-Every session uses its own branch and worktree from the same green foundation commit. Read [`INTERNAL_CONTRACT_V1.md`](../specs/INTERNAL_CONTRACT_V1.md), the relevant packet, and the product documents before implementation.
+Do not give an agent one of these packets with the instruction to implement all
+numbered specs during Stage 1. Use [`../SESSION_LAUNCH.md`](../SESSION_LAUNCH.md).
 
 Phong's `platform/` and Luke/Santhos's `sandbox/` are read-only to every Connection Agent session.

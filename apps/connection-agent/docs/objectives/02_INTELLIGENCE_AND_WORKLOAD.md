@@ -1,5 +1,9 @@
 # Objective 02: Intelligence and Workload
 
+> **Stage 2/3 backlog:** For the current showable product, implement only
+> [`../stage-1/handoffs/02_INTELLIGENCE_WORKLOAD.md`](../stage-1/handoffs/02_INTELLIGENCE_WORKLOAD.md).
+> Do not run I1–I8 as a sequential Stage 1 queue.
+
 **Session:** Implementation agent 2
 
 **Goal:** Implement profile intelligence, the immutable embedding workload, candidate retrieval, reciprocal pair reasoning, viewer-specific cards, explanations, and minimal coordination.

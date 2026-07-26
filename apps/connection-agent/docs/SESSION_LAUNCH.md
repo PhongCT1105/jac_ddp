@@ -1,54 +1,84 @@
-# Launching the parallel Codex sessions
+# Launching the Stage 1 Codex sessions
 
-## Team size
+**Status:** Operator instructions
 
-Run five concurrent sessions:
+Stage 1 uses five implementation worktrees and keeps the primary `main`
+checkout untouched for later consolidation. Each session implements one
+launch-ready handoff, performs its own spec and implementation reviews, pushes
+its assigned branch, and stops.
 
-1. Primary repository: orchestration and core.
-2. Data and Integrations worktree.
-3. Intelligence and Workload worktree.
-4. Product Experience worktree.
-5. Evaluation and Quality worktree.
+## 1. Worktrees, branches, and handoffs
 
-## Create the worktrees
+| Session | Open Codex in | Assigned branch | Implement this document |
+|---|---|---|---|
+| Core | `/Users/sebastian/dev/jac_ddp-orchestration-core` | `agent/orchestration-core` | `/Users/sebastian/dev/jac_ddp-orchestration-core/apps/connection-agent/docs/stage-1/handoffs/00_CORE.md` |
+| Data and Integrations | `/Users/sebastian/dev/jac_ddp-data-integrations` | `agent/data-integrations` | `/Users/sebastian/dev/jac_ddp-data-integrations/apps/connection-agent/docs/stage-1/handoffs/01_DATA_INTEGRATIONS.md` |
+| Intelligence and Workload | `/Users/sebastian/dev/jac_ddp-intelligence-workload` | `agent/intelligence-workload` | `/Users/sebastian/dev/jac_ddp-intelligence-workload/apps/connection-agent/docs/stage-1/handoffs/02_INTELLIGENCE_WORKLOAD.md` |
+| Product Experience | `/Users/sebastian/dev/jac_ddp-product-experience` | `agent/product-experience` | `/Users/sebastian/dev/jac_ddp-product-experience/apps/connection-agent/docs/stage-1/handoffs/03_PRODUCT_EXPERIENCE.md` |
+| Evaluation and Quality | `/Users/sebastian/dev/jac_ddp-evaluation-quality` | `agent/evaluation-quality` | `/Users/sebastian/dev/jac_ddp-evaluation-quality/apps/connection-agent/docs/stage-1/handoffs/04_EVALUATION_QUALITY.md` |
 
-After the foundation commit is merged to `main`, run from the repository root:
+The primary checkout `/Users/sebastian/dev/jac_ddp` stays on `main`. Do not open
+an implementation session there.
+
+## 2. Create or verify the worktrees
+
+After the launch documents are merged to a clean `main`, run from the primary
+checkout:
 
 ```bash
 ./apps/connection-agent/scripts/create-agent-worktrees.sh
 ```
 
-By default this creates four sibling worktrees next to `jac_ddp`. Pass a different parent directory as the first argument if desired.
+The script creates missing worktrees and verifies every existing worktree belongs
+to this repository, uses its assigned branch, is clean, and can be safely
+fast-forwarded to the exact `main` launch baseline. It aborts rather than
+overwriting divergent or unfinished work. Do not launch sessions unless all five
+paths print `Ready` at the same SHA.
 
-## Initial prompt for each implementation session
+## 3. Exact prompt for each session
 
-Use the corresponding objective packet and replace `<OBJECTIVE_FILE>`:
-
-```text
-You are one implementation session for Connection Agent in the shared jac_ddp repository.
-
-Read completely:
-- apps/connection-agent/docs/specs/INTERNAL_CONTRACT_V1.md
-- docs/specs/CONNECTION_AGENT_JACGRID_BOUNDARIES.md
-- apps/connection-agent/docs/objectives/<OBJECTIVE_FILE>
-- the product documents linked by that objective
-
-Implement the objective's numbered specs in order. Work only in its declared writable paths. Treat platform/, sandbox/, src/contracts/, and all other objective paths as read-only unless the orchestration agent gives an explicit handoff.
-
-Before every handoff run ./apps/connection-agent/scripts/check.sh. Commit one tested numbered spec at a time. If a released contract must change, stop at the boundary and propose the smallest change to the orchestration agent; do not edit the contract yourself.
-```
-
-Objective files:
+Open Codex in the worktree shown in the table and paste this prompt, replacing
+`<ABSOLUTE_HANDOFF_PATH>` with the document from the final column:
 
 ```text
-01_DATA_AND_INTEGRATIONS.md
-02_INTELLIGENCE_AND_WORKLOAD.md
-03_PRODUCT_EXPERIENCE.md
-04_EVALUATION_AND_QUALITY.md
+Implement the Stage 1 handoff in <ABSOLUTE_HANDOFF_PATH> end to end.
+
+The handoff is authoritative for your goal, writable paths, exact worktree and
+branch, review panel, acceptance criteria, checks, commit/push destination, and
+stopping point. Follow its required AGENT_WORKFLOW.md completely: draft the one
+lane implementation spec, have the spec reviewed by the required panel including
+a current-Jac expert, improve it, implement it, have the final implementation
+reviewed, resolve blocking findings, run all checks, commit and push only your
+assigned branch, and return the required handoff evidence.
+
+Do not implement the lane's Stage 2/3 backlog, modify another lane, modify
+Phong's platform/ or Luke/Santhos's sandbox/, merge to main, or begin unreviewed
+code.
 ```
 
-## Orchestration rhythm
+No additional branch instructions are needed; they are inside each handoff.
 
-The primary session remains on `main`, follows `00_ORCHESTRATION_AND_CORE.md`, reviews each small objective commit, merges contracts and migrations before dependents, runs the integrated quality gate, and tells active sessions when to incorporate the new integration head.
+## 4. What runs in parallel
 
-Do not wait for an objective to finish entirely before integration. Merge a green numbered spec at a time so the product remains runnable.
+All five sessions may start together from the same baseline. They work against
+released contracts and fakes rather than editing one another's branches. A
+session that discovers a shared contract need records the smallest proposal in
+its handoff report; it does not cross the ownership boundary.
+
+Each session produces one coherent Stage 1 deliverable. The older numbered
+C/D/I/U/E briefs remain backlog and must not be treated as the current launch
+queue.
+
+## 5. When the sessions finish
+
+For each session, collect:
+
+- pushed branch and final SHA;
+- implementation spec and review records;
+- check/test evidence;
+- demo command;
+- contract requests and integration notes.
+
+Then return to the orchestration session in `/Users/sebastian/dev/jac_ddp` and
+say that the Stage 1 branches are ready for consolidation. Orchestration reviews
+and integrates the branches; implementation sessions never merge themselves.

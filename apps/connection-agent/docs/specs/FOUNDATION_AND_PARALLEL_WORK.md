@@ -2,6 +2,11 @@
 
 **Status:** Complete — ready for parallel objective work
 
+> **Execution update:** The foundation remains authoritative, but the current
+> implementation cut is the single-spec-per-lane
+> [`Stage 1 product`](../STAGE_1_PRODUCT.md). The longer objective sequences in
+> this document are preserved as Stage 2/3 planning.
+
 **Owner:** Sebastian / Connection Agent workstream
 
 **Applies to:** `apps/connection-agent/` and `workloads/connection-embedding/`
@@ -171,7 +176,8 @@ After F0–F4 are merged, separate Codex sessions may own these objectives:
 | Product experience | `apps/connection-agent/web/` | Conversation UI, cards, phone sign-in, private chat |
 | Evaluation and quality | `apps/connection-agent/evals/`, assigned application test paths | Fixture scenarios, invariants, qualitative rubrics, regression reporting |
 
-An objective can contain a sequence of smaller specs. The objective owner works through those specs in order on its own branch and worktree.
+After Stage 1, an objective can contain a sequence of smaller specs. During
+Stage 1, each objective owner implements only its launch-ready handoff and stops.
 
 ## 7. Shared-path ownership during parallel work
 
@@ -184,6 +190,10 @@ The orchestration agent remains responsible for:
 - incorporating agreed boundary-contract changes;
 - reviewing directory scope before merge;
 - merging small vertical increments and keeping the integration branch green.
+
+Stage 1 lanes may write only their explicitly assigned
+`docs/specs/stage-1/<lane>/` implementation spec and handoff report. Other
+product documentation remains orchestration-owned.
 
 If an objective needs a contract change, its session stops at the boundary, proposes the smallest change, and continues only after the orchestration agent releases the revised contract. It does not edit the shared contract opportunistically.
 

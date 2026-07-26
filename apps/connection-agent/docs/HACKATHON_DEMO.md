@@ -1,5 +1,11 @@
 # Hackathon demo: AI connection agent
 
+> **Target-stage note:** This document describes the final live hackathon
+> presentation. The earlier, time-protected local showcase is defined in
+> [`STAGE_1_PRODUCT.md`](STAGE_1_PRODUCT.md). Phone OTP, production persistence,
+> live messaging, and coordination remain final-demo goals but are deliberately
+> not Stage 1 blockers.
+
 ## Goal
 
 Demonstrate one complete loop of the normal Connection Agent product: a person creates a profile, asks to meet someone, explores a suggested person in chat, and enters a private chat after mutual interest.

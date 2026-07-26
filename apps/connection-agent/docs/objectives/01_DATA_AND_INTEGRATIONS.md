@@ -1,5 +1,9 @@
 # Objective 01: Data and Integrations
 
+> **Stage 2/3 backlog:** For the current showable product, implement only
+> [`../stage-1/handoffs/01_DATA_INTEGRATIONS.md`](../stage-1/handoffs/01_DATA_INTEGRATIONS.md).
+> Do not run D1–D6 as a sequential Stage 1 queue.
+
 **Session:** Implementation agent 1
 
 **Goal:** Implement secure durable storage, identity, realtime human messaging, and replaceable external-service adapters without deciding matching intelligence or product presentation.

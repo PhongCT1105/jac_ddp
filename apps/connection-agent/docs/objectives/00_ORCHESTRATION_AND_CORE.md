@@ -1,5 +1,9 @@
 # Objective 00: Orchestration and Core
 
+> **Stage 2/3 backlog:** For the current showable product, implement only
+> [`../stage-1/handoffs/00_CORE.md`](../stage-1/handoffs/00_CORE.md). Do not run
+> C1–C4 as a sequential Stage 1 queue.
+
 **Session:** Primary orchestration agent
 
 **Goal:** Keep the shared application contract stable, implement the conflict-prone product lifecycle once, coordinate integration order, and merge green vertical increments from the four implementation objectives.

@@ -27,8 +27,11 @@ The demo uses 30 synthetic profiles, invokes the exact local `connection-embeddi
 
 Connection Agent implementation sessions may edit `apps/connection-agent/` and, only when assigned, `workloads/connection-embedding/`. Phong's `platform/` and Luke/Santhos's `sandbox/` are read-only.
 
-See [`docs/specs/FOUNDATION_AND_PARALLEL_WORK.md`](docs/specs/FOUNDATION_AND_PARALLEL_WORK.md) for parallel objective boundaries.
+See [`docs/STAGE_1_PRODUCT.md`](docs/STAGE_1_PRODUCT.md) for the current showable
+product cut and [`docs/AGENT_WORKFLOW.md`](docs/AGENT_WORKFLOW.md) for the
+mandatory spec-driven implementation/review process.
 
-The released product interface is [`docs/specs/INTERNAL_CONTRACT_V1.md`](docs/specs/INTERNAL_CONTRACT_V1.md). Start parallel sessions from [`docs/objectives/README.md`](docs/objectives/README.md); each packet defines one goal, writable paths, ordered specs, checks, and completion evidence.
+The released product interface is [`docs/specs/INTERNAL_CONTRACT_V1.md`](docs/specs/INTERNAL_CONTRACT_V1.md). Start parallel sessions from [`docs/SESSION_LAUNCH.md`](docs/SESSION_LAUNCH.md); each Stage 1 handoff defines one goal, writable paths, reviews, checks, push destination, and completion evidence.
 
-After the foundation is merged, [`docs/SESSION_LAUNCH.md`](docs/SESSION_LAUNCH.md) explains how to create isolated worktrees and provides the exact initial prompt for each Codex session.
+The older [`docs/objectives/`](docs/objectives/) packets remain the Stage 2/3
+backlog and are not the current launch instructions.
