@@ -10,11 +10,6 @@ command -v jac >/dev/null 2>&1 || {
   echo "Jac is required to run Connection Agent checks." >&2
   exit 1
 }
-command -v rg >/dev/null 2>&1 || {
-  echo "ripgrep (rg) is required for boundary checks." >&2
-  exit 1
-}
-
 echo "Checking workload"
 (
   cd "${workload_dir}"
@@ -31,7 +26,15 @@ echo "Checking application"
   jac test -d tests
 )
 
-if rg -n '(^|[[:space:]])(from|import)[[:space:]].*(platform|sandbox)' "${app_dir}/src" "${workload_dir}/src"; then
+boundary_pattern='(^|[[:space:]])(from|import)[[:space:]].*(platform|sandbox)'
+if command -v rg >/dev/null 2>&1; then
+  boundary_hits="$(rg -n "${boundary_pattern}" "${app_dir}/src" "${workload_dir}/src" || true)"
+else
+  boundary_hits="$(grep -R -n -E "${boundary_pattern}" "${app_dir}/src" "${workload_dir}/src" || true)"
+fi
+
+if [[ -n "${boundary_hits}" ]]; then
+  echo "${boundary_hits}"
   echo "Application or workload source imports platform/sandbox implementation code." >&2
   exit 1
 fi

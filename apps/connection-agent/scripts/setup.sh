@@ -9,11 +9,6 @@ if ! command -v jac >/dev/null 2>&1; then
   echo "Jac is required. Install a compatible Jac 0.34.x release, then rerun this command." >&2
   exit 1
 fi
-if ! command -v rg >/dev/null 2>&1; then
-  echo "ripgrep (rg) is required by the application boundary check." >&2
-  exit 1
-fi
-
 echo "Using $(jac --version)"
 echo "Repository: ${repo_dir}"
 
