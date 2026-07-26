@@ -1,6 +1,6 @@
 # Sandbox Layer — Spec
 
-**Owner: Luke**
+**Owner: Luke/Santhos**
 
 The sandbox layer is what makes it safe for a Mac to run someone else's workload. The worker runtime hands the sandbox a task envelope; the sandbox runs the workload in a restricted environment with resource limits and returns a result envelope with full execution metadata (Contract B in `../architecture.md` §5).
 
@@ -12,11 +12,11 @@ For the hackathon, only **allowlisted job types** run — the sandbox's job is t
 
 - Execute one task envelope at a time in a restricted environment on macOS.
 - Enforce limits: wall time, CPU time, memory, no network (per the envelope's `limits`).
-- Only run allowlisted runtimes (`embedding-runner:v1`, `noop-runner:v1`; `training-runner:v1` stretch).
+- Only run allowlisted immutable workloads (`connection-embedding:1.0.0`, `noop-runner:v1`; training workload stretch).
 - Capture execution metadata (timings, peak memory, exit code) — this feeds the Sandbox/Attempt nodes in the Jac graph and the audit timeline.
 - Fail safely: any violation or crash returns a well-formed result envelope with `status: error | timeout | limit_exceeded`, never a hung worker.
 
-**Not responsible for:** talking to the coordinator (worker runtime does that), task content correctness (verification layer), or scheduling.
+**Not responsible for:** talking to the coordinator (worker runtime does that), implementing application algorithms (Sebastian supplies them), task-content correctness (verification layer), or scheduling.
 
 ---
 
@@ -57,8 +57,8 @@ sandbox_run(task_envelope) -> result_envelope
 
 1. mkdir workdir/{task_id}/
 2. write task.json
-3. launch: sandbox-exec -f profile.sb python runner.py workdir/{task_id}
-   (runner selected by job_type from the allowlist registry)
+3. launch the immutable workload entrypoint declared in its manifest
+   (workload ID + version selected from the allowlist registry)
 4. enforce wall timer; poll RSS for memory limit
 5. runner writes result.json (the `output` part)
 6. wrap with execution metadata → result envelope
@@ -69,12 +69,12 @@ sandbox_run(task_envelope) -> result_envelope
 
 ```json
 {
-  "embedding": {"runtime": "embedding-runner:v1", "entry": "runners/embedding.py"},
-  "noop":      {"runtime": "noop-runner:v1",      "entry": "runners/noop.py"}
+  "connection-embedding@1.0.0": {"manifest": "workloads/connection-embedding/1.0.0/workload.json"},
+  "noop-runner@1.0.0":          {"manifest": "workloads/noop-runner/1.0.0/workload.json"}
 }
 ```
 
-Unknown `job_type` → immediate `status: "error"`, `error: "job_type not allowlisted"`.
+Unknown job types, workload IDs, or workload versions produce an immediate structured error. Sebastian owns the code and fixtures inside `connection-embedding`; Luke/Santhos own installation, allowlisting, safe invocation, limits, and result-envelope wrapping.
 
 ### Failure mapping
 
@@ -96,7 +96,7 @@ Required in every envelope (Contract B `execution` block): `runtime`, `started_a
 
 ---
 
-## 5. Demo moment (owned by Luke)
+## 5. Demo moment (owned by Luke/Santhos)
 
 A 15-second beat inside demo Beat 4, or Q&A ammo:
 
@@ -109,7 +109,7 @@ A 15-second beat inside demo Beat 4, or Q&A ammo:
 
 | # | Milestone | Proves |
 |---|---|---|
-| L-M1 | R1 runner harness executes `noop` + embedding runner locally with limits and metadata | Contract B works standalone |
+| L-M1 | R1 runner harness executes `noop` plus Sebastian's supplied embedding workload locally with limits and metadata | Contracts B and C work standalone |
 | L-M2 | Wall/CPU/memory kills produce correct envelope statuses | Fail-safe behavior |
 | L-M3 | Seatbelt profile: network denied, filesystem restricted, embedding runner still works | Real isolation |
 | L-M4 | Integrated with Phong's worker runtime on all three Macs | Full path |

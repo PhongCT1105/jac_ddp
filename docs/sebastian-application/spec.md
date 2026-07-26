@@ -2,7 +2,7 @@
 
 **Owner: Sebastian**
 
-The matching application is the first real product on JacGrid. It is Sebastian's original matching idea, kept intact — profiles in, meaningful human connections out — with one architectural change: **all heavy compute (embedding generation) is purchased from the JacGrid network instead of run locally.** The app submits an embedding job through Contract A, gets verified vectors back, and does the matching on top.
+The matching application is the first real product on JacGrid. This document defines the **narrow JacGrid integration slice** used in the shared hackathon demo; it does not replace the connection application's fuller product plan. The application team owns both the product logic and the versioned embedding workload. JacGrid executes that workload across the network and returns verified vectors; the application performs matching on top.
 
 This makes the app the proof that JacGrid works: a product that consumes distributed compute the way apps consume Stripe.
 
@@ -53,6 +53,8 @@ fetch_results(job_id) -> vectors + receipt   GET  /api/jobs/{id}/result
 
 Design rule: the job client is an interface with two implementations — `MockJacGrid` (returns locally-computed embeddings after a fake delay, with fake task-progress states) and `LiveJacGrid`. Sebastian builds the entire app against the mock and swaps in live at integration time.
 
+**Application workload package** — `connection-embedding:1.0.0`, owned by Sebastian's team and consumed through Contract C. It contains the embedding entrypoint, immutable manifest, exact model artifact/revision, input/output schemas, resource requirements, verification tolerance, and deterministic fixtures. Phong schedules this package; Luke/Santhos run it safely. Neither infrastructure workstream reimplements the embedding algorithm.
+
 **Match engine** — pure local computation on returned vectors:
 
 - Cosine similarity across all profile pairs (≤ a few hundred profiles → a NumPy one-liner).
@@ -65,7 +67,7 @@ Design rule: the job client is an interface with two implementations — `MockJa
 ## 3. Embedding job details
 
 - One item per profile: `{"id": profile_id, "text": bio + " " + tags joined}`.
-- Model: `all-MiniLM-L6-v2` (agreed with Phong/Luke — the allowlisted runner's model; must match exactly, since JacGrid verification recomputes samples).
+- Model family: `all-MiniLM-L6-v2`. Before integration, the workload manifest must pin an exact model revision or artifact hash, dependency versions, normalization, numeric precision, and comparison tolerance.
 - Chunking (`chunk_size`) is the coordinator's concern; the app just sends items.
 - Incremental behavior: on "Find my matches," embed only profiles without a stored embedding (new/edited), then match across all. First demo run embeds everything — that's good: more tasks on the dashboard.
 - Budget fields: `price_per_task: 0.10`, `max_total: 3.0 TESTUSD` — the app is *paying* for compute; surface the receipt ("this match run cost 0.40 TESTUSD across 3 machines") in the results view. Great fintech-track moment.
@@ -78,10 +80,12 @@ Design rule: the job client is an interface with two implementations — `MockJa
 
 ---
 
-## 4. What stays out (hackathon)
+## 4. What stays out of the shared JacGrid demo slice
 
-- Accounts/auth (a name field is enough), chat/contact exchange, mutual-match logic, mobile, moderation.
+- Phone authentication, profile approval, mutual-interest logic, private chat, mobile behavior, and moderation remain part of the connection application's own plan. They do not have to block the four-minute JacGrid integration demo.
 - Any direct knowledge of workers, sandboxes, or payments beyond displaying the receipt JacGrid returns.
+
+This cut line simplifies the joint infrastructure demonstration; it must not be described as the complete Connection Agent product.
 
 ---
 
@@ -89,14 +93,14 @@ Design rule: the job client is an interface with two implementations — `MockJa
 
 | # | Milestone | Proves |
 |---|---|---|
-| S-M1 | Profiles CRUD + seeded dataset (~100 believable profiles) + pool view | App skeleton |
-| S-M2 | Full flow against `MockJacGrid`: submit → progress UI → matches rendered | Product works end-to-end |
+| S-M1 | Versioned embedding workload + profiles CRUD + seeded dataset + pool view | Application and workload skeleton |
+| S-M2 | Full flow against `MockJacGrid`: submit → progress UI → matches rendered | Integration slice works end-to-end |
 | S-M3 | Match quality pass on seed data: top matches look right, why-matched reads well | Demo credibility |
 | S-M4 | Swapped to `LiveJacGrid` against Phong's coordinator; receipt displayed | The real story |
 
 ## 6. Risks & mitigations
 
 - **Coordinator late** → the mock means S-M1–S-M3 never block; the swap is one config change.
-- **Model mismatch with the runner** → pin `all-MiniLM-L6-v2` in writing (done here); verify one embedding matches between app-local and network output early in integration.
+- **Model mismatch with workers** → own one immutable workload package; pin its exact model artifact and dependencies; run the same fixtures locally and through every sandbox before integration.
 - **Seed profiles look fake** → write them from real hackathon-attendee archetypes; 100 profiles ≈ 30 min with an LLM assist, curated by hand.
 - **Progress UI has nothing to show (jobs finish fast)** → good problem; keep per-task states visible for at least a beat via polling snapshots, and lean on the dashboard for the network view.
