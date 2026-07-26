@@ -31,6 +31,9 @@ The hackathon build runs across three Macs and powers one real application: **Se
 |---|---|
 | [architecture.md](architecture.md) | System architecture, Jac graph model, walkers, and the API contracts between the three workstreams |
 | [workload-ownership-decision.md](workload-ownership-decision.md) | Why the application owns its computation while Phong distributes it and Luke/Santhos run it safely |
+| [Connection Agent foundation](../apps/connection-agent/docs/specs/FOUNDATION_AND_PARALLEL_WORK.md) | Proposed foundation and directory ownership for our parallel implementation sessions |
+| [specs/CONNECTION_AGENT_JACGRID_BOUNDARIES.md](specs/CONNECTION_AGENT_JACGRID_BOUNDARIES.md) | Proposed contracts only where Connection Agent exchanges data or code with JacGrid |
+| [Connection Agent walking skeleton](../apps/connection-agent/docs/specs/WALKING_SKELETON.md) | Proposed fake-adapter scenario proving the complete two-person product loop |
 | [demo-plan.md](demo-plan.md) | The three-Mac live demo script, including failure recovery |
 | [phong-distributed/spec.md](phong-distributed/spec.md) | Distributed compute layer: coordinator, workers, scheduling, verification, payment |
 | [phong-distributed/tasks.md](phong-distributed/tasks.md) | Phong's task breakdown |
