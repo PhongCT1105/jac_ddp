@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>connection-agent — JacGrid matching demo</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0b0d12;
+    --panel: #161a22;
+    --panel-2: #1e2430;
+    --border: #2a3140;
+    --text: #e8ecf4;
+    --muted: #8b96a8;
+    --accent: #6ee7b7;
+    --accent-2: #60a5fa;
+    --warn: #f59e0b;
+    --danger: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+  h1 { font-size: 1.4rem; margin: 0; }
+  .tag { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; }
+  .subtitle { color: var(--muted); margin-bottom: 28px; font-size: 0.95rem; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 18px;
+  }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  input, select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 0.95rem;
+  }
+  input { flex: 1; min-width: 180px; }
+  button {
+    background: var(--accent);
+    color: #06210f;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--accent-2);
+    border: 1px solid var(--border);
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .pool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .profile-chip {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+  }
+  .profile-chip:hover { border-color: var(--accent-2); }
+  .profile-chip.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .profile-chip .name { font-weight: 600; font-size: 0.9rem; }
+  .profile-chip .bio { color: var(--muted); font-size: 0.78rem; margin-top: 4px; line-height: 1.3; max-height: 2.6em; overflow: hidden; }
+  .count-line { color: var(--muted); margin-bottom: 14px; font-size: 0.9rem; }
+  .task-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .task-row {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; font-size: 0.88rem;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot.queued { background: var(--muted); }
+  .dot.running { background: var(--warn); box-shadow: 0 0 8px var(--warn); animation: pulse 1s infinite; }
+  .dot.complete { background: var(--accent); }
+  .dot.failed { background: var(--danger); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .task-worker { color: var(--muted); font-family: ui-monospace, monospace; }
+  .task-status { margin-left: auto; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.04em; color: var(--muted); }
+  .progress-bar { height: 8px; background: var(--panel-2); border-radius: 999px; overflow: hidden; margin-top: 14px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); transition: width 0.4s ease; }
+  .match-card {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 10px;
+  }
+  .match-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .match-name { font-weight: 700; font-size: 1rem; }
+  .match-score { color: var(--accent); font-weight: 700; font-family: ui-monospace, monospace; }
+  .match-bio { color: var(--muted); font-size: 0.85rem; margin: 6px 0 8px; }
+  .why-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .why-tag { font-size: 0.72rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .why-tag.shared { border-color: var(--accent); color: var(--accent); }
+  .why-tag.compl { border-color: var(--accent-2); color: var(--accent-2); }
+  .receipt {
+    margin-top: 18px; padding: 16px 18px; border-radius: 10px;
+    background: linear-gradient(135deg, rgba(110,231,183,0.12), rgba(96,165,250,0.08));
+    border: 1px solid rgba(110,231,183,0.35);
+    font-size: 0.92rem;
+  }
+  .receipt b { color: var(--accent); }
+  .error-box { color: var(--danger); font-size: 0.88rem; margin-top: 10px; }
+  .step-nav { display: flex; gap: 8px; margin-bottom: 20px; }
+  .step-nav .step { flex: 1; text-align: center; padding: 8px; border-radius: 8px; font-size: 0.8rem; color: var(--muted); border: 1px solid var(--border); }
+  .step-nav .step.active { color: var(--accent); border-color: var(--accent); }
+  .step-nav .step.done { color: var(--accent-2); }
+  .muted { color: var(--muted); }
+  code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-size: 0.85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>connection-agent</h1>
+    <span class="tag" id="mode-tag">JacGrid matching demo</span>
+  </header>
+  <div class="subtitle">Find the people here you should talk to — matched by a distributed embedding job running on the JacGrid network.</div>
+
+  <div class="step-nav">
+    <div class="step" id="nav-pool">1 · Pool</div>
+    <div class="step" id="nav-progress">2 · Compute</div>
+    <div class="step" id="nav-results">3 · Matches</div>
+  </div>
+
+  <!-- POOL VIEW -->
+  <section id="view-pool" class="card">
+    <div class="row" style="margin-bottom: 16px;">
+      <input id="api-base" placeholder="API base (e.g. http://127.0.0.1:8080)" value="">
+      <button class="secondary" id="btn-seed">Seed profiles</button>
+      <button class="secondary" id="btn-refresh">Refresh pool</button>
+    </div>
+    <div class="count-line" id="pool-count">Loading pool…</div>
+    <div class="pool-grid" id="pool-grid"></div>
+    <div class="row" style="margin-top: 18px;">
+      <span class="muted">Selected:</span>
+      <span id="selected-name" style="font-weight: 600;">none</span>
+      <button id="btn-find-matches" disabled style="margin-left: auto;">Find my matches</button>
+    </div>
+    <div class="error-box" id="pool-error"></div>
+  </section>
+
+  <!-- PROGRESS VIEW -->
+  <section id="view-progress" class="card" style="display: none;">
+    <div class="muted">Matching job running on the JacGrid network…</div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width: 0%;"></div></div>
+    <div class="task-list" id="task-list"></div>
+    <div class="row" style="margin-top: 18px;">
+      <button class="secondary" id="btn-back-pool">Back to pool</button>
+    </div>
+  </section>
+
+  <!-- RESULTS VIEW -->
+  <section id="view-results" class="card" style="display: none;">
+    <div class="muted" style="margin-bottom: 10px;">Top matches for <b id="results-name"></b></div>
+    <div id="match-cards"></div>
+    <div class="receipt" id="receipt-box"></div>
+    <div class="row" style="margin-top: 18px;">
+      <button class="secondary" id="btn-back-pool-2">Back to pool</button>
+    </div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+const state = {
+  apiBase: localStorage.getItem("connection_agent_api_base") || "",
+  profiles: [],
+  selectedId: null,
+  pollTimer: null,
+};
+
+$("api-base").value = state.apiBase;
+$("api-base").addEventListener("change", (e) => {
+  state.apiBase = e.target.value.replace(/\/$/, "");
+  localStorage.setItem("connection_agent_api_base", state.apiBase);
+});
+
+function apiUrl(path) {
+  return (state.apiBase || "") + path;
+}
+
+async function callWalker(name, body) {
+  const resp = await fetch(apiUrl("/walker/" + name), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  const data = await resp.json();
+  // 0.16 response envelope: {"ok":..., "data": {"reports": [...]}}
+  const reports = (data.data && data.data.reports) || data.reports || [];
+  if (!resp.ok || data.ok === false) {
+    const msg = (data.error && data.error.message) || "request failed";
+    throw new Error(msg);
+  }
+  return reports[0] || {};
+}
+
+function showView(name) {
+  ["pool", "progress", "results"].forEach((v) => {
+    $("view-" + v).style.display = v === name ? "block" : "none";
+    $("nav-" + v).classList.toggle("active", v === name);
+  });
+}
+
+function renderPool() {
+  const grid = $("pool-grid");
+  grid.innerHTML = "";
+  state.profiles.forEach((p) => {
+    const chip = document.createElement("div");
+    chip.className = "profile-chip" + (p.id === state.selectedId ? " selected" : "");
+    chip.innerHTML = `<div class="name">${escapeHtml(p.name)}</div><div class="bio">${escapeHtml(p.bio)}</div>`;
+    chip.addEventListener("click", () => {
+      state.selectedId = p.id;
+      $("selected-name").textContent = p.name;
+      $("btn-find-matches").disabled = false;
+      renderPool();
+    });
+    grid.appendChild(chip);
+  });
+  $("pool-count").textContent = `${state.profiles.length} people in the pool`;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s == null ? "" : String(s);
+  return d.innerHTML;
+}
+
+async function loadPool() {
+  $("pool-error").textContent = "";
+  try {
+    const rep = await callWalker("list_profiles", {});
+    state.profiles = rep.profiles || [];
+    renderPool();
+  } catch (e) {
+    $("pool-error").textContent = "Could not load pool: " + e.message + " (check the API base above)";
+  }
+}
+
+$("btn-seed").addEventListener("click", async () => {
+  $("pool-error").textContent = "";
+  try {
+    await callWalker("seed_profiles", {});
+    await loadPool();
+  } catch (e) {
+    $("pool-error").textContent = "Seed failed: " + e.message;
+  }
+});
+
+$("btn-refresh").addEventListener("click", loadPool);
+
+const TASK_ORDER = ["queued", "running", "complete", "failed"];
+
+function renderTasks(statusResp) {
+  const list = $("task-list");
+  list.innerHTML = "";
+  (statusResp.tasks || []).forEach((t) => {
+    const row = document.createElement("div");
+    row.className = "task-row";
+    row.innerHTML = `
+      <span class="dot ${t.status}"></span>
+      <span class="task-worker">${escapeHtml(t.worker || "?")}</span>
+      <span>${escapeHtml(t.task_id)}</span>
+      <span class="task-status">${escapeHtml(t.status)}${t.paid ? " · paid" : ""}</span>`;
+    list.appendChild(row);
+  });
+  const pct = Math.round((statusResp.progress || 0) * 100);
+  $("progress-fill").style.width = pct + "%";
+}
+
+async function pollUntilDone() {
+  try {
+    const statusResp = await callWalker("match_status", { profile_id: state.selectedId });
+    renderTasks(statusResp);
+    if (statusResp.status === "complete") {
+      clearInterval(state.pollTimer);
+      await showResults();
+    } else if (statusResp.status === "failed") {
+      clearInterval(state.pollTimer);
+      showView("pool");
+      $("pool-error").textContent = "Matching job failed — please retry.";
+    }
+  } catch (e) {
+    clearInterval(state.pollTimer);
+    showView("pool");
+    $("pool-error").textContent = "Poll failed: " + e.message;
+  }
+}
+
+$("btn-find-matches").addEventListener("click", async () => {
+  if (!state.selectedId) return;
+  showView("progress");
+  $("task-list").innerHTML = "";
+  $("progress-fill").style.width = "0%";
+  try {
+    await callWalker("find_matches", { profile_id: state.selectedId });
+    state.pollTimer = setInterval(pollUntilDone, 900);
+    pollUntilDone();
+  } catch (e) {
+    showView("pool");
+    $("pool-error").textContent = "Could not start matching: " + e.message;
+  }
+});
+
+function renderMatches(rep) {
+  $("results-name").textContent = state.profiles.find((p) => p.id === state.selectedId)?.name || state.selectedId;
+  const container = $("match-cards");
+  container.innerHTML = "";
+  (rep.matches || []).forEach((m) => {
+    const card = document.createElement("div");
+    card.className = "match-card";
+    const shared = (m.why_matched && m.why_matched.shared_tags) || [];
+    const compl = (m.why_matched && m.why_matched.complementary_tags) || [];
+    card.innerHTML = `
+      <div class="match-head">
+        <span class="match-name">${escapeHtml(m.name)}</span>
+        <span class="match-score">${(m.score * 100).toFixed(1)}%</span>
+      </div>
+      <div class="match-bio">${escapeHtml(m.bio)}</div>
+      <div class="why-tags">
+        ${shared.map((t) => `<span class="why-tag shared">shared: ${escapeHtml(t)}</span>`).join("")}
+        ${compl.map((t) => `<span class="why-tag compl">complements: ${escapeHtml(t)}</span>`).join("")}
+      </div>`;
+    container.appendChild(card);
+  });
+
+  const r = rep.receipt || {};
+  if (r.tasks) {
+    const workers = new Set((r.payments || []).map((p) => p.worker));
+    $("receipt-box").innerHTML =
+      `This match run cost <b>${(r.total_paid || 0).toFixed(2)} ${r.currency || "TESTUSD"}</b> ` +
+      `across <b>${workers.size || "?"}</b> machine${workers.size === 1 ? "" : "s"} ` +
+      `(${r.verified}/${r.tasks} tasks verified).`;
+  } else {
+    $("receipt-box").textContent = "";
+  }
+}
+
+async function showResults() {
+  try {
+    const rep = await callWalker("get_matches", { profile_id: state.selectedId, top_n: 3 });
+    renderMatches(rep);
+    showView("results");
+  } catch (e) {
+    showView("pool");
+    $("pool-error").textContent = "Could not fetch matches: " + e.message;
+  }
+}
+
+$("btn-back-pool").addEventListener("click", () => { clearInterval(state.pollTimer); showView("pool"); });
+$("btn-back-pool-2").addEventListener("click", () => showView("pool"));
+
+showView("pool");
+loadPool();
+</script>
+</body>
+</html>

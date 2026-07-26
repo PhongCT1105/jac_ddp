@@ -1,0 +1,15 @@
+[project]
+name = "connection-agent"
+version = "0.1.0"
+description = "The matching application — JacGrid's first product. Profile pool, job client (Mock/Live JacGrid), and cosine match engine."
+entry-point = "main.sv.jac"
+kind = "api-service"
+
+[dependencies]
+requests = "~=2.32"
+
+[test]
+directory = "."
+
+[serve]
+port = 8080
