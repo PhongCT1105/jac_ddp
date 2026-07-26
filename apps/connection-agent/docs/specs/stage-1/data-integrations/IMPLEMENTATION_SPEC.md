@@ -136,8 +136,8 @@ design.
 ### Implementation review verdict
 
 `/root/jac_spec_review`: ready after final diff review; Jac 0.34.6 compiler,
-lane tests, and full quality gate passed. `/root/boundary_spec_review`: initial
-blocking final finding was resolved by strict v0.1.0 manifest pinning and the
-empty-key guard. `/root/isolation_spec_review`: ready once this required report
-is created; it found no code/test-isolation blocker. Affected Jac checks were
-rerun after corrections.
+lane tests, and full quality gate passed. `/root/boundary_spec_review`: ready
+after rechecking strict v0.1.0 manifest pinning, finite bounded tolerance, and
+the empty-key guard. `/root/isolation_spec_review`: ready once this required
+report is created; it found no code/test-isolation blocker. Affected Jac checks
+were rerun after corrections.
