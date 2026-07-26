@@ -1,6 +1,6 @@
-"""Synthetic people used by the local foundation and evaluation work."""
+"""Synthetic fixture identity and approved profile access for local Stage 1."""
 
-import from src.contracts.models { ProfileRevision }
+import from src.contracts.models { Actor, ProfileRevision }
 
 
 def fixture_profiles() -> list[ProfileRevision] {
@@ -31,12 +31,10 @@ def fixture_profiles() -> list[ProfileRevision] {
         ),
 
     ];
-
     for index in range(1, 28) {
-        actor_id: str = f"fixture_person_{index:02d}";
         profiles.append(
             ProfileRevision(
-                actor_id=actor_id,
+                actor_id=f"fixture_person_{index:02d}",
                 display_name=f"Fixture Person {index:02d}",
                 revision_id=f"profile_revision_fixture_{index:02d}_01",
                 markdown=f"Synthetic profile {index}: interested in ceramics, poetry, gardening, culinary history, and local arts.",
@@ -54,4 +52,33 @@ def find_profile(profiles: list[ProfileRevision], actor_id: str) -> ProfileRevis
         }
     }
     raise ValueError("profile_not_found");
+}
+
+
+obj FixtureSource {
+    """Per-demo fixture selector; it never shares mutable profile instances."""
+    has selected_actor_id: str | None = None;
+
+    def select_fixture_actor(actor_id: str) -> Actor {
+        try {
+            profile: ProfileRevision = find_profile(fixture_profiles(), actor_id);
+        } except ValueError {
+            raise ValueError("fixture_actor_not_found");
+        }
+        self.selected_actor_id = profile.actor_id;
+        return Actor(
+            actor_id=profile.actor_id, display_name=profile.display_name, fixture=True,
+        );
+    }
+
+    def get_selected_profile(actor: Actor) -> ProfileRevision {
+        if not actor.fixture or self.selected_actor_id != actor.actor_id {
+            raise ValueError("fixture_actor_not_found");
+        }
+        try {
+            return find_profile(fixture_profiles(), actor.actor_id);
+        } except ValueError {
+            raise ValueError("fixture_actor_not_found");
+        }
+    }
 }
