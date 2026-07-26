@@ -19,15 +19,22 @@ the coordinator/verifier can tell which path actually ran.
 
 ## Invocation contract
 
-Mirrors the file-I/O convention already used by `sandbox/runners/noop.jac`,
-so the generic sandbox can invoke this workload exactly like any other
-allowlisted `job_type`:
+Mirrors the file-I/O convention already used by `sandbox/runners/noop.jac`
+and follows `docs/luke-sandbox/spec.md` §3 exactly: **the runner writes only
+the `output` object; the sandbox is what wraps it into the full Contract B
+result envelope.** This workload does not construct `task_id`/`status`/
+`execution`/`error` on disk at all.
 
 1. Caller creates a scratch directory and writes a Contract B task envelope
    (`docs/architecture.md` §5) to `<workdir>/task.json`.
 2. Caller sets `JACGRID_WORKDIR=<workdir>` and runs `jac run src/embed.jac`.
-3. Entrypoint writes a Contract B result envelope to `<workdir>/result.json`
-   and exits 0 on `status: "ok"`, 1 otherwise.
+3. **On success:** entrypoint writes `{"results": [{"id": ..., "embedding": [...]}]}`
+   — and only that — to `<workdir>/result.json`, exits 0.
+4. **On failure:** entrypoint writes NOTHING to `result.json`, prints a
+   human-readable reason to stderr, exits non-zero. The sandbox's own
+   "runner exits non-zero / bad output → `status: error`" path (spec §3's
+   Failure mapping table) is what builds the error envelope — this
+   workload never fakes one.
 
 ```bash
 mkdir -p /tmp/work
@@ -37,7 +44,7 @@ cat > /tmp/work/task.json <<'EOF'
              "items": [{"id": "profile-001", "text": "ML engineer who loves climbing"}]}}
 EOF
 JACGRID_WORKDIR=/tmp/work ../../.venv/bin/jac run src/embed.jac
-cat /tmp/work/result.json
+cat /tmp/work/result.json   # {"results": [{"id": "profile-001", "embedding": [...]}]}
 ```
 
 The entrypoint forces `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` itself
@@ -45,9 +52,22 @@ The entrypoint forces `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` itself
 never phones home even if the sandbox doesn't set those env vars.
 
 `run_task(task: dict) -> dict` in `src/embed.jac` is the pure, file-I/O-free
-core — the `with entry:__main__` block is a thin wrapper around it. Tests
-and any future in-process caller (worker runtime, coordinator recompute
-sample) should call `run_task` directly instead of shelling out.
+core and still returns the FULL internal envelope shape (`task_id`,
+`status`, `output`, `execution`, `error`) — that's what the 6 tests below
+exercise directly, and what any future in-process caller (recompute-sample
+verification) should call instead of shelling out. The
+`with entry:__main__` block is the only place that narrows `run_task`'s
+result down to the on-disk output-only contract described above.
+
+**Known limitation:** because the on-disk contract only carries `results`,
+the primary-vs-fallback runtime distinction (`connection-embedding:1.0.0`
+vs `connection-embedding-fallback:1.0.0`) doesn't reach the sandbox's
+wrapped envelope — it's only visible via a stderr line
+(`connection-embedding: ok, runtime=...`). The sandbox's own
+`execution.runtime` will reflect whichever workload id it invoked from its
+allowlist registry, not which internal code path actually ran. Flagged for
+Phong/Luke-Santhos as a follow-up if the demo wants that distinction
+visible in the audit trail.
 
 ## Manifest
 

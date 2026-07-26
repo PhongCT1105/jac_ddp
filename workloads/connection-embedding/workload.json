@@ -7,8 +7,10 @@
   "entrypoint": "src/embed.jac",
   "invocation": {
     "convention": "file-io",
-    "description": "Caller sets JACGRID_WORKDIR to a directory containing task.json (Contract B task envelope) and runs `jac run src/embed.jac`; the entrypoint writes result.json (Contract B result envelope) into the same directory. Mirrors sandbox/runners/noop.jac so the generic sandbox invokes every allowlisted job_type the same way.",
-    "env": {"JACGRID_WORKDIR": "absolute path to a writable scratch directory"}
+    "description": "Caller sets JACGRID_WORKDIR to a directory containing task.json (Contract B task envelope) and runs `jac run src/embed.jac`. Per docs/luke-sandbox/spec.md §3: on success the entrypoint writes ONLY the output object — {\"results\": [...]} — to result.json and exits 0; the SANDBOX (not this workload) wraps that with execution metadata into the full Contract B result envelope. On any failure, result.json is NOT written, an error is printed, and the process exits non-zero — the sandbox's own 'runner exits non-zero / bad output -> error' path builds the error envelope from that. Mirrors sandbox/runners/noop.jac's convention (which also writes only its bare output, e.g. {\"echo\": ...}, never a full envelope).",
+    "env": {"JACGRID_WORKDIR": "absolute path to a writable scratch directory"},
+    "on_success": "result.json = {\"results\": [{\"id\": ..., \"embedding\": [...]}]}, exit 0",
+    "on_failure": "result.json NOT written, stderr has a human-readable message, exit code != 0"
   },
   "model": {
     "family": "sentence-transformers",
@@ -28,8 +30,9 @@
   "runtime_versions": {
     "primary": "connection-embedding:1.0.0",
     "fallback": "connection-embedding-fallback:1.0.0",
-    "fallback_trigger": "sentence-transformers import failure, model load failure, or any exception during encode() — the workload always returns contract-shaped output, tagged with whichever runtime actually ran so the coordinator/verifier can distinguish them.",
-    "fallback_scheme": "deterministic seeded SHA-256 bag-of-words hash, L2-normalized, 384-d (same dimensionality as the primary model so downstream consumers never branch on it)"
+    "fallback_trigger": "sentence-transformers import failure, model load failure, or any exception during encode() — the workload always produces contract-shaped `results`, whichever path ran.",
+    "fallback_scheme": "deterministic seeded SHA-256 bag-of-words hash, L2-normalized, 384-d (same dimensionality as the primary model so downstream consumers never branch on it)",
+    "visibility": "the on-disk result.json (this workload's output-only contract) does NOT carry this tag — only `results`. Which runtime actually ran is printed to stderr (\"connection-embedding: ok, runtime=...\") for operator/log visibility; the sandbox's own execution.runtime in the wrapped envelope reflects the allowlisted workload id it invoked (connection-embedding@1.0.0), not this internal primary/fallback distinction. Known limitation for this hackathon iteration — flagged in the app's report."
   },
   "input_schema": {
     "description": "Contract B task envelope (docs/architecture.md §5)",
@@ -69,42 +72,26 @@
     }
   },
   "output_schema": {
-    "description": "Contract B result envelope (docs/architecture.md §5)",
+    "description": "The `output` object this workload writes to result.json on success (per docs/luke-sandbox/spec.md §3) — NOT the full Contract B result envelope. The sandbox harness wraps this with task_id/status/execution/error itself; this workload never writes those fields.",
     "type": "object",
-    "required": ["task_id", "status", "output", "execution", "error"],
+    "required": ["results"],
     "properties": {
-      "task_id": {"type": "string"},
-      "status": {"enum": ["ok", "error"]},
-      "output": {
-        "type": "object",
-        "properties": {
-          "results": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["id", "embedding"],
-              "properties": {
-                "id": {"type": "string"},
-                "embedding": {"type": "array", "items": {"type": "number"}, "minItems": 384, "maxItems": 384}
-              }
-            }
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "embedding"],
+          "properties": {
+            "id": {"type": "string"},
+            "embedding": {"type": "array", "items": {"type": "number"}, "minItems": 384, "maxItems": 384}
           }
         }
-      },
-      "execution": {
-        "type": "object",
-        "required": ["runtime", "started_at", "finished_at", "peak_memory_mb", "cpu_seconds", "exit_code"],
-        "properties": {
-          "runtime": {"enum": ["connection-embedding:1.0.0", "connection-embedding-fallback:1.0.0"]},
-          "started_at": {"type": "string", "format": "date-time"},
-          "finished_at": {"type": "string", "format": "date-time"},
-          "peak_memory_mb": {"type": "number"},
-          "cpu_seconds": {"type": "number"},
-          "exit_code": {"type": "integer"}
-        }
-      },
-      "error": {"type": ["object", "null"]}
+      }
     }
+  },
+  "on_failure_contract": {
+    "description": "On failure this workload writes NO result.json at all and exits non-zero (stderr carries the reason) — it does not attempt to construct any part of the Contract B envelope. See docs/luke-sandbox/spec.md §3's Failure mapping table for how the sandbox turns that into a result envelope.",
+    "run_task_error_codes": ["unsupported_job_type", "empty_items", "invalid_item", "exception"]
   },
   "resource_requirements": {
     "cpu_seconds": 120,
