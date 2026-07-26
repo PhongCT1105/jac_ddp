@@ -1,0 +1,9 @@
+{
+  "job_id": "job-001",
+  "status": "running",
+  "tasks": [
+    {"task_id": "t-1", "status": "complete", "worker": "mac2", "paid": true},
+    {"task_id": "t-2", "status": "running", "worker": "mac3", "paid": false}
+  ],
+  "progress": 0.5
+}

@@ -1,0 +1,14 @@
+{
+  "app_id": "matching-app",
+  "job_type": "embedding",
+  "payload": {
+    "model": "all-MiniLM-L6-v2",
+    "items": [
+      {"id": "profile-001", "text": "ML engineer who loves climbing..."},
+      {"id": "profile-002", "text": "Designer into generative art..."}
+    ]
+  },
+  "partitioning": {"strategy": "chunk", "chunk_size": 25},
+  "verification": {"method": "recompute_sample", "sample_rate": 0.1},
+  "budget": {"max_total": 3.0, "price_per_task": 0.10, "currency": "TESTUSD"}
+}

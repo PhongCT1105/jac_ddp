@@ -1,0 +1,14 @@
+{
+  "task_id": "t-2",
+  "status": "ok",
+  "output": {"results": [{"id": "profile-026", "embedding": [0.123, 0.456]}]},
+  "execution": {
+    "runtime": "embedding-runner:v1",
+    "started_at": "2026-07-26T14:03:21Z",
+    "finished_at": "2026-07-26T14:03:44Z",
+    "peak_memory_mb": 812,
+    "cpu_seconds": 19.4,
+    "exit_code": 0
+  },
+  "error": null
+}

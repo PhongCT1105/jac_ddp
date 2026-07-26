@@ -1,0 +1,9 @@
+{
+  "task_id": "t-2",
+  "job_type": "embedding",
+  "payload": {
+    "model": "all-MiniLM-L6-v2",
+    "items": [{"id": "profile-026", "text": "..."}]
+  },
+  "limits": {"cpu_seconds": 120, "memory_mb": 2048, "wall_seconds": 180, "network": "none"}
+}
