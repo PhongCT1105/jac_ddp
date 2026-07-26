@@ -17,7 +17,7 @@ apps/connection-agent/tests/experience/
 
 ## Read-only paths
 
-`src/contracts/`, `src/core/`, `src/adapters/`, `src/intelligence/`, `supabase/`, `evals/`, `workloads/`, `platform/`, and `sandbox/` are read-only. Request new operation behavior from the orchestration agent.
+`src/contracts/`, `src/core/`, `src/adapters/`, `src/backend/`, `src/intelligence/`, `evals/`, `workloads/`, `platform/`, and `sandbox/` are read-only. Request new operation behavior from the orchestration agent.
 
 ## Ordered specs
 
@@ -29,7 +29,7 @@ Create the minimal responsive Jac web/PWA shell with conversation history, compo
 
 ### U2 — Development and production entry
 
-Add a local-only fixture-persona selector and production phone OTP screens behind the identity boundary.
+Add a local-only fixture-persona selector and the selected Jac-auth entry screens behind the identity boundary. Phone OTP is optional later work, not a current dependency.
 
 **Acceptance:** the same UI works as a fixture actor locally and authenticated actor in integration; fixture controls are absent from production output.
 

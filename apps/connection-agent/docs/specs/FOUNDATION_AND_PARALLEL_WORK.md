@@ -6,6 +6,11 @@
 > implementation cut is the single-spec-per-lane
 > [`Stage 1 product`](../STAGE_1_PRODUCT.md). The longer objective sequences in
 > this document are preserved as Stage 2/3 planning.
+>
+> **Backend update:**
+> [`JAC_BACKEND_AND_JACHAMMER.md`](../JAC_BACKEND_AND_JACHAMMER.md) supersedes
+> every Supabase-specific planning reference below. The historical foundation
+> remains valid; future persistence/auth/realtime work uses Jac's backend.
 
 **Owner:** Sebastian / Connection Agent workstream
 
@@ -46,10 +51,11 @@ apps/connection-agent/
 ├── src/
 │   ├── contracts/       # internal domain types and operation interfaces
 │   ├── core/            # suggestion, consent, match, thread, message rules
-│   ├── adapters/        # Supabase, JacGrid, LLM, identity, notifications
+│   ├── backend/         # Jac persistence, auth, grants, endpoints, realtime
+│   ├── adapters/        # JacGrid, LLM, notifications, other external services
 │   └── intelligence/    # profile, retrieval, assessment, card workflows
 ├── web/                 # first-party client/PWA
-├── supabase/            # migrations, RLS policies, local fixture seed
+├── supabase/            # inactive historical placeholder
 ├── evals/               # personas, scenarios, rubrics, reports
 ├── tests/               # application-level and adapter tests
 ├── scripts/
@@ -132,7 +138,7 @@ Define the transport-independent types and operations for:
 - trace event and stable application error;
 - idempotency keys and authorization context.
 
-The contract fixes identifiers, revision references, exact lifecycle states, authorization expectations, retry/idempotency behavior, and successful/error outputs. It does not bind operations to HTTP, MCP, a browser, Supabase, or an in-process Jac agent call.
+The contract fixes identifiers, revision references, exact lifecycle states, authorization expectations, retry/idempotency behavior, and successful/error outputs. It does not bind operations to HTTP, MCP, a browser, a particular Jac persistence backend, or an in-process Jac agent call.
 
 **Exit:** every planned implementation session can compile or validate fixtures against one released internal contract version.
 
@@ -140,7 +146,7 @@ The contract fixes identifiers, revision references, exact lifecycle states, aut
 
 Create in-memory adapters for identity, profiles, embedding compute, candidate retrieval, pair assessment, cards, suggestions, interests/matches, threads/messages, and captured notifications. `MockJacGrid` invokes the exact local `connection-embedding` workload; it does not implement another embedding algorithm.
 
-**Exit:** tests can act as multiple fixture people and exercise every core interface without phone authentication, Supabase, a live LLM, or live JacGrid.
+**Exit:** tests can act as multiple fixture people and exercise every core interface without production authentication, persistent storage, a live LLM, or live JacGrid.
 
 ### F3 — Prove the walking skeleton
 
@@ -171,7 +177,7 @@ After F0–F4 are merged, separate Codex sessions may own these objectives:
 | Objective | Writable paths | Typical specs |
 |---|---|---|
 | Core lifecycle | `apps/connection-agent/src/core/` | Profile approval, suggestions, reciprocal consent, atomic match/thread |
-| Persistence and service adapters | `apps/connection-agent/src/adapters/`, `apps/connection-agent/supabase/` | Repositories, RLS, identity, realtime, `LiveJacGrid` client |
+| Jac backend and service adapters | `apps/connection-agent/src/backend/`, `apps/connection-agent/src/adapters/` | Persistence, auth, grants, realtime, `LiveJacGrid` client |
 | Intelligence and workload | `apps/connection-agent/src/intelligence/`, `workloads/connection-embedding/` | Profile generation, embeddings, retrieval, pair assessment, cards |
 | Product experience | `apps/connection-agent/web/` | Conversation UI, cards, phone sign-in, private chat |
 | Evaluation and quality | `apps/connection-agent/evals/`, assigned application test paths | Fixture scenarios, invariants, qualitative rubrics, regression reporting |
@@ -186,7 +192,7 @@ The orchestration agent remains responsible for:
 - `apps/connection-agent/src/contracts/`;
 - cross-objective application integration tests;
 - product documentation and accepted decision notes;
-- coordinating Supabase migration order;
+- coordinating Jac graph/schema evolution and shared contract order;
 - incorporating agreed boundary-contract changes;
 - reviewing directory scope before merge;
 - merging small vertical increments and keeping the integration branch green.

@@ -23,6 +23,8 @@ not implement I1–I8 in sequence.
 ## Required reading
 
 - [`../../AGENT_WORKFLOW.md`](../../AGENT_WORKFLOW.md)
+- [`../../JAC_NATIVE_ENGINEERING.md`](../../JAC_NATIVE_ENGINEERING.md)
+- [`../../JAC_BACKEND_AND_JACHAMMER.md`](../../JAC_BACKEND_AND_JACHAMMER.md)
 - [`../../STAGE_1_PRODUCT.md`](../../STAGE_1_PRODUCT.md)
 - [`../../specs/INTERNAL_CONTRACT_V1.md`](../../specs/INTERNAL_CONTRACT_V1.md)
 - [`../../specs/STAGE_1_OPERATION_CONTRACT.md`](../../specs/STAGE_1_OPERATION_CONTRACT.md)
@@ -73,7 +75,8 @@ LLM. Prefer a small Jac-native design over introducing a framework.
 
 - Live `by llm()` profile conversation.
 - Production embedding model and model artifact download.
-- Supabase pgvector.
+- A production vector index; Stage 1 compares the complete eligible Jac fixture
+  pool.
 - Full Jac graph topology/walker if it does not materially help this slice.
 - Open-ended explanations and invited coordination.
 - Broad qualitative model evaluation.
@@ -106,6 +109,8 @@ apps/connection-agent/docs/specs/stage-1/intelligence-workload/HANDOFF_REPORT.md
 - Results are deterministic offline and record source revision/workload
   identity.
 - Existing foundation tests and `./apps/connection-agent/scripts/check.sh` pass.
+- All authored runtime code is Jac; any exception satisfies and records the
+  `JAC_NATIVE_ENGINEERING.md` process.
 
 ## Completion and handback
 

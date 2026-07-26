@@ -1,207 +1,199 @@
-# Technical direction: AI connection agent
+# Technical direction: AI Connection Agent
 
-This document records technical decisions for the hackathon build. Events are not a separate type of object in the first version.
+This document records the current hackathon architecture. It supersedes the
+earlier Supabase-centered direction. Events are not a separate product entity
+in the first version.
 
-## 1. One product, two agent entry paths
+Authoritative companion decisions:
 
-Connection Agent has one account, one Markdown profile per person, one matching system, and one set of agent capabilities.
+- [`JAC_NATIVE_ENGINEERING.md`](JAC_NATIVE_ENGINEERING.md)
+- [`JAC_BACKEND_AND_JACHAMMER.md`](JAC_BACKEND_AND_JACHAMMER.md)
+- [`specs/INTERNAL_CONTRACT_V1.md`](specs/INTERNAL_CONTRACT_V1.md)
+- [`../../docs/specs/CONNECTION_AGENT_JACGRID_BOUNDARIES.md`](../../../docs/specs/CONNECTION_AGENT_JACGRID_BOUNDARIES.md)
 
-```text
-Connection Agent web chat                    ChatGPT / Claude / Codex / another host
-      |                                          |
-Connection Agent agent harness                         external agent
-      | in-process tools              | remote MCP
-      +---------------+---------------+
-                      |
-        shared capability contract and handlers
-                      |
-               Jac matching service
-                 |              |
-       Supabase auth, data,      +-- JacGrid compute adapter
-       vectors, decisions, chat          |
-                                  distributed workers safely run
-                                  our immutable embedding workload
-```
+## 1. One Jac product, two agent entry paths
 
-The person using Connection Agent's own web chat never sees tool or MCP setup. The harness is already connected to the shared capabilities. A person using an external agent authorizes that agent to use the same Connection Agent account and capability definitions through remote MCP.
-
-### Recommendation: share the capability contract and handlers
-
-Use the same tool definitions, typed contract, application handlers, and Jac walkers in both paths. For the hackathon, the first-party harness may invoke them in-process so remote MCP hosting and authorization cannot block the core demo. The public MCP server is a thin transport over those exact handlers, not another implementation of the product.
-
-The ordinary web application does not need to send everything through MCP. Phone authentication, loading persistent messages, and realtime human chat can use Supabase directly. MCP is the agent capability boundary, not a replacement for every application API.
-
-There is also a naming trap: Jac's built-in `jac mcp` command exposes the Jac compiler and documentation to coding assistants. It is useful while developing Connection Agent, but it is not Connection Agent's product MCP server. Connection Agent needs its own custom MCP server with tools such as `update_profile` and `show_next_person`.
-
-## 2. Proposed hackathon stack
+Connection Agent has one identity, one canonical Markdown profile per person,
+one matching system, and one set of application capabilities.
 
 ```text
-First-party interface       Jac client/PWA: minimal chat shell and ASCII cards
-Agent and matching logic    Jac nodes, edges, walkers, and byLLM
-Canonical data              Supabase Postgres
-Phone identity              Supabase Auth with SMS OTP
-Semantic retrieval          embeddings in Supabase pgvector
-Distributed computation     JacGrid executes our versioned embedding workload
-Human direct chat           Supabase tables + RLS + Realtime
-Agent interoperability      custom remote MCP server
-Notifications               SMS for OTP and high-value match/message alerts
+Jac first-party client                   external agent host
+        |                                      |
+        | Jac server calls                     | product MCP
+        +------------------+-------------------+
+                           |
+             shared typed operations and walkers
+                           |
+                  Jac application backend
+               auth / roots / persistent graph
+               cards / consent / chat / WebSocket
+                           |
+                 EmbeddingCompute boundary
+                    |                 |
+              MockJacGrid         LiveJacGrid
+                    |                 |
+            local workload        Phong's JacGrid
+                                      |
+                             Luke/Santhos sandbox
 ```
 
-Using Jac's client compiler for the small first-party interface is recommended because it demonstrates Jac across client, server, graph, and AI without requiring a large conventional React application. If client integration becomes the critical hackathon blocker, the UI can remain a very thin web client while the distinctive product logic stays in Jac.
+The first-party client invokes the same handlers used by the product MCP
+adapter. Authentication, browser navigation, and human realtime delivery remain
+ordinary application behavior rather than agent tools.
 
-## 3. Canonical Markdown profile and derived search data
+Jac's built-in `jac mcp` is different: it gives coding agents current Jac
+documentation and compiler tools. Every development/review session uses it, but
+it is not Connection Agent's user-facing MCP service.
 
-Each user has one Markdown profile as the human-readable source of truth.
+## 2. Hackathon stack
+
+| Concern | Current choice |
+|---|---|
+| Authored runtime language | Jac everywhere Jac can reasonably implement it |
+| First-party interface | Jac client full-stack web/PWA |
+| Server/API | Jac private/public functions and walkers through `jac start` |
+| Agent/matching logic | Jac nodes, edges, walkers, and `by llm()` |
+| Canonical product data | Jac persistent graph |
+| Identity | Jac auth; fixture actors locally; username/email or SSO for hosted demo |
+| Cross-user privacy | per-user roots plus explicit grants and typed views |
+| Semantic retrieval | vectors on Jac projection nodes; complete-pool comparison for hackathon |
+| Distributed compute | JacGrid executes our immutable Jac embedding workload |
+| Direct chat | Jac persistent message nodes plus WebSocket/fallback refresh |
+| Hosting | JacHammer free sandbox after the local product is green |
+| Agent interoperability | thin product MCP adapter delegating to Jac handlers |
+
+Supabase is not part of the hackathon architecture. SQL/RLS/pgvector/Realtime
+work is removed from the current backlog rather than duplicated beside Jac.
+
+## 3. Canonical Jac graph
+
+The readable Markdown profile remains the semantic source of truth. Durable
+product relationships are Jac nodes and typed edges:
 
 ```text
-profiles
-  user_id             Supabase Auth user UUID
-  full_name           required real name
-  markdown            canonical profile document
-  updated_at
+(User root)
+    -> (Profile)
+        -> (ProfileRevision)
+            -> (EmbeddingProjection)
 
-profile_search
-  user_id
-  embedding           vector derived from current Markdown
-  facets              optional free-form JSON/text generated from Markdown
-  index_version
+(Suggestion)-[VIEWER]->(User root)
+            -[SUBJECT_REVISION]->(ProfileRevision)
+            -[PAIR]->(CanonicalPair)
+
+(CanonicalPair) -> (PairAssessment)
+                -> (PrivateDecision per viewer)
+                -> (Match) -> (PrivateThread) -> (Message)
 ```
 
-The profile may contain social links and plain-language sharing instructions. No photo is needed in the first version.
+Rules:
 
-Everything in the Markdown is readable by the matching AI and eligible for relevant card selection. V1 does not implement field-level secrecy or progressive disclosure. Connection Agent still presents only a relevant subset rather than exposing the entire document automatically.
+- A durable node must be reachable from the correct root or explicitly granted.
+- Client operations return typed view objects, never raw nodes.
+- Profile revisions and shown cards are immutable.
+- Derived vectors, facets, and candidate topology carry exact source revision
+  and workload identities and may be regenerated.
+- `jobj()` is lookup, not authorization.
+- A matched thread is granted only to its two participants.
+- One-sided interest never appears in another user's view or error.
 
-Embeddings and facets are disposable projections. Whenever the Markdown meaningfully changes, regenerate them. They exist only to find a plausible short list; the LLM reads the original Markdown before deciding what card to show.
+Jac uses SQLite under `.jac/data/` locally and may use MongoDB/Redis when scaled.
+Schema changes use Jac alias/upgrade/quarantine tools rather than ad hoc SQL
+migrations.
 
-Embedding generation crosses a replaceable compute boundary. The connection-app team owns `connection-embedding`, including its immutable model artifact, normalization, schemas, fixtures, and verification tolerance. A server-side JacGrid adapter submits approved profile text, polls the job, validates the complete result, and stores the vector in Supabase. Phong's platform schedules and verifies executions; the Luke/Santhos sandbox invokes the package safely. Neither infrastructure workstream owns our embedding algorithm.
+## 4. Matching and JacGrid boundary
 
-Local development uses `MockJacGrid`, which invokes the exact same workload package locally and emits fixture task-progress states. There is no separate mock embedding implementation.
+The application team owns the immutable `connection-embedding` Jac workload.
+JacGrid distributes that package, verifies its result, and returns one complete
+embedding set. It does not own profiles, retrieval, ranking, pair assessment,
+cards, consent, matches, threads, or messages.
 
-Time-bounded facts remain ordinary Markdown in V1 and should be written with explicit natural dates or durations. The current chat message can also constrain the card request without first creating a separate database object. A future derived `current_context` projection may make expiration and asynchronous matching easier, but the hackathon does not need it.
+Local development uses `MockJacGrid`, which invokes the exact same workload
+package locally. `LiveJacGrid` maps the provider-neutral `EmbeddingCompute`
+operation to the accepted external Job API. Product code never imports
+Phong's `platform/` or Luke/Santhos's `sandbox/`.
 
-For the tiny hackathon population, the system could compare every profile. Implementing the retrieval projection early is still recommended because Supabase already supports `pgvector`, and it prevents the first implementation from depending on an all-pairs LLM call.
+For the hackathon population, the trusted Jac server may enumerate eligible
+profiles across roots, compare every current vector, and keep a bounded
+candidate neighborhood. That avoids adding a separate vector database. A
+future index adapter can accelerate retrieval without moving canonical product
+state out of Jac.
 
-## 4. Why Jac makes sense here
+When a person asks “show me someone”:
 
-Calling an LLM through `by llm()` is convenient but is not, by itself, enough reason to choose Jac. Connection Agent becomes Jac-shaped when matching is represented as a topology and the matching operation becomes a walker.
+1. Read their approved Markdown revision and explicit current request.
+2. Ensure the revision has a verified projection, using local or live JacGrid.
+3. Enumerate the complete eligible Jac profile set on the trusted server.
+4. Apply self, block, system-eligibility, and lifecycle exclusions.
+5. Rank vectors and keep a bounded neighborhood.
+6. Materialize that neighborhood as Jac topology and traverse it for reciprocal
+   assessment.
+7. Produce one grounded, viewer-specific immutable card.
+8. Record that exact card and suggestion under the viewer's authorized state.
 
-### 4.1 The graph has real domain meaning
+Partitioning embedding work across machines never partitions the matching pool.
 
-Conceptually, the current request travels with the walker rather than becoming a separate persistent `Intent` object:
+## 5. Why Jac is more than the syntax
+
+Jac represents actual domain relationships and lets walkers carry the current
+request through them:
 
 ```text
-(Person) --CANDIDATE_FOR {semantic_score, constraints_ok}--> (Person)
-    |
-    +--INTERESTED_IN----------------------------------------> (Person)
-    +--MATCHED_WITH-----------------------------------------> (Person)
-
-(Match) --> (PrivateThread)
+(Person)-[:CANDIDATE_FOR {score}]->(Person)
+(Person)-[:INTEREST_DECISION]->(CanonicalPair)
+(CanonicalPair)->(Match)->(PrivateThread)
 ```
 
-The exact persistence split may evolve, but these are genuine relationships rather than tables being forced into a graph for presentation. Jac edges can carry the facts that explain why a relationship exists, while walkers carry the current user's request through the candidate topology.
+Useful walkers/operations include:
 
-### 4.2 Walkers model the work
+- `UpdateProfile`
+- `BuildCandidateGraph`
+- `FindNextPerson`
+- `ExplainPerson`
+- `RecordInterest`
+- `CreateMatch`
+- `CoordinateMatch`
 
-Recommended walkers or equivalent application operations:
+Typed `by llm()` outputs include `ProfileProposal`, `PairAssessment`,
+`CardContent`, and `CoordinationSuggestion`. Trusted ordinary Jac code validates
+grounding, authorization, lifecycle, and writes before data becomes durable.
 
-- `UpdateProfile`: save approved Markdown and refresh its derived search projection.
-- `BuildCandidateGraph`: retrieve top candidates, apply mutual hard constraints, and connect eligible candidate nodes.
-- `FindNextPerson`: walk the candidate graph and use LLM-guided traversal or typed pair assessment to select a strong unseen candidate.
-- `ExplainPerson`: revisit the selected pair and answer a question using the candidate's Markdown, selecting only facts relevant to the viewer's question.
-- `RecordInterest`: record “I’d be open” or pass.
-- `CreateMatch`: detect reciprocal interest and create the private thread.
-- `CoordinateMatch`: help two matched people find the next logistical step when explicitly invited.
+All authored runtime code follows
+[`JAC_NATIVE_ENGINEERING.md`](JAC_NATIVE_ENGINEERING.md). Foreign-language source
+requires a recorded Jac-reviewer exception and contains no product logic.
 
-Jac's LLM-guided traversal can select a limited number of successor nodes while considering node and edge semantics. That is unusually close to Connection Agent's actual operation: deterministic retrieval creates the neighborhood; the model reasons over that neighborhood; the walker reports the chosen card.
+## 6. Identity and cross-user access
 
-### 4.3 Typed AI boundaries
+Jac auth gives each authenticated person an isolated root. The hackathon can use
+fixture actors locally and simple Jac username/email accounts or SSO when
+hosted. Phone OTP is deferred unless a thin Jac-owned integration is added after
+the core demo works.
 
-Use `by llm()` for outputs whose shapes the rest of the application must trust, for example:
+Trusted matching can use `allroots()` to examine eligible profiles. Cross-user
+product access uses explicit grants:
 
-```text
-ProfileProposal
-PairAssessment
-CardContent
-CoordinationSuggestion
-```
+- a card view is granted only to its viewer;
+- a thread is granted only to both matched roots;
+- raw profile Markdown, vectors, assessments, traces, and pending decisions are
+  never granted to clients merely because a pair was assessed;
+- authenticated private endpoints are the default for user data;
+- public endpoints never hold per-user state.
 
-The model can return structured objects with reasons, uncertainty, relevant facts, and a recommendation. Ordinary code then enforces constraints and performs writes. Card ASCII is generated only after the content has been selected, keeping content reasoning separate from presentation.
+Authorization tests use Alice, Bob, and Carol: Alice and Bob can access their
+matched thread; Carol cannot resolve it into a readable or writable view.
 
-### 4.4 Jac serving and full-stack support
+## 7. Direct human chat
 
-Public or private walkers can become HTTP endpoints through `jac start`, and Jac's client layer can call walkers without manually maintaining a second route/schema definition. This is useful for the first-party chat. Jac can also import Python and npm packages, so Supabase and an MCP SDK do not require abandoning the language.
+Matches, threads, and messages are persistent Jac nodes. Only the two participant
+roots receive access to the thread. Human messages remain distinct from agent
+utterances and invited coordination suggestions.
 
-### 4.5 What not to force into Jac's graph
-
-Do not duplicate Supabase's reliable phone auth, realtime message transport, or vector index merely to claim that everything is graph-native. For the hackathon:
-
-- Supabase remains canonical for identity, Markdown profiles, match decisions, threads, messages, and embeddings.
-- JacGrid is execution infrastructure, not a source of profile, suggestion, decision, match, or message truth.
-- Jac materializes the candidate topology used for reasoning and controls the matching workflow.
-- If Jac's persistent graph proves valuable in practice, more relationship state can move there later without changing the product experience.
-
-This is a deliberate compromise: it uses Jac's distinctive traversal and AI abstractions while avoiding two competing sources of truth.
-
-## 5. Scalable matching path
-
-When a user asks “show me someone”:
-
-1. Read the user's Markdown profile and the current conversational request, if any.
-2. Ensure the current approved profile revision has a ready embedding. If missing, submit our versioned workload through the JacGrid compute abstraction and validate the result.
-3. Apply mutual hard constraints that can be evaluated deterministically.
-4. Query the Supabase embedding index for a short list, perhaps 20–50 candidates.
-5. Materialize those candidates and retrieval signals as a Jac candidate graph.
-6. Have our Jac walker assess and rank only that graph, using original Markdown as the semantic source.
-7. Produce one tailored `CardContent` object for the current viewer.
-8. Render it as compact mobile-safe ASCII inside the chat.
-9. Remember that the card was shown so “show me someone else” advances rather than repeats.
-
-Embeddings answer “who might be worth examining?” The Jac/LLM layer answers “is there a believable reason these two people might want to meet, and how should that be explained to this viewer?” Neither step claims mutual interest.
-
-For a tiny pool, step 4 can temporarily return everyone. The rest of the pipeline remains the same.
-
-## 6. Chat-native cards
-
-Cards are messages, not a separate swipe interface.
-
-```text
-user: show me someone
-agent: [dynamic ASCII card for Maya]
-user: tell me more about why you chose her
-agent: [ordinary conversational answer]
-user: I’d be open
-agent: noted — I’ll tell you if it becomes a match
-user: show me someone else
-agent: [next dynamic ASCII card]
-```
-
-The card renderer receives selected content and a mobile-safe presentation instruction. Initially, prefer short lines and horizontal separators; avoid vertical borders that can wrap badly in host chat windows. Viewport-specific rendering can wait because external chat hosts constrain layout anyway.
-
-When both people independently say they would be open, the state becomes a match and Connection Agent creates a private human-to-human web thread. The card remains above the thread as context.
-
-## 7. Phone-only identity across clients
-
-The account is identified internally by the Supabase Auth UUID and accessed through a verified phone number. Email is not required.
-
-### First-party web
-
-1. Enter phone number.
-2. Receive SMS OTP.
-3. Verify and receive a Supabase session.
-4. Open the same canonical profile, cards, matches, and chats on every first-party device.
-
-### External agent
-
-1. The external host connects to Connection Agent's product MCP server.
-2. Connection Agent opens its authorization page.
-3. The person verifies the same phone number or reuses an existing Connection Agent session.
-4. Connection Agent issues a scoped token bound to the same Supabase user UUID.
-
-There is no recovery process for a lost or changed phone number in the hackathon version. Supporting several agent grants and a revocation screen is a later operational feature; the data model should not artificially prohibit multiple clients.
+Use Jac WebSocket function/walker endpoints for live delivery when the hosted
+target supports them. Ordered refresh is a valid demo fallback. Idempotency keys
+prevent duplicate messages across reconnect/retry.
 
 ## 8. Product MCP tools
 
-Initial conceptual tools:
+Initial capabilities:
 
 ```text
 get_my_profile()
@@ -214,72 +206,45 @@ open_match_chat(match_id)
 help_coordinate(match_id, request)
 ```
 
-`current_request` is call context, not a separately persisted intent record. If a person wants a time-bounded request to remain available for later or asynchronous matching, the agent proposes adding a dated statement to the same Markdown profile.
+Build the product MCP transport in Jac or through Jac interoperability. Every
+tool delegates to the same typed application operation used by the first-party
+client. A foreign-language transport wrapper is allowed only through the formal
+exception process and cannot contain identity, matching, consent, or write
+rules.
 
-Tool descriptions should include Connection Agent's conversational guidance: brief and non-invasive, no questionnaire, interpretations are editable, and profile additions are shown before first save. The MCP server enforces identity, access, mutual constraints, and write rules; it does not rely on every host model following prose perfectly.
+## 9. JacHammer release strategy
 
-Implementation recommendation: build a small product-specific `mcp_server.jac` using Jac's Python interoperability with an MCP SDK, and have every tool delegate to the same Jac application handlers/walkers. If an SDK compatibility issue makes a thin Python transport wrapper faster, keep that wrapper free of product logic. Do not modify or confuse this with the built-in `jac mcp` compiler-assistance server.
+The local Stage 1 product remains the time-protected stopping point. After it is
+green, deploy the consolidated full-stack Jac application through JacHammer's
+free sandbox because the official JacHacks SF guidance strongly encourages it
+and includes a separate Best JacHammer award.
 
-The first-party Jac harness loads the same tool definitions into its `by llm()` agent and may call their handlers in-process. External MCP hosts use the remote endpoint. Transport-level contract tests verify that in-process and MCP calls have the same inputs, outputs, authorization semantics, and product behavior.
+Do not assume undocumented hosted behavior. Verify URL/cold-start behavior,
+persistence, two-user isolation, grants, WebSockets or refresh fallback,
+outbound JacGrid calls, and server-only secrets using the checklist in
+[`JAC_BACKEND_AND_JACHAMMER.md`](JAC_BACKEND_AND_JACHAMMER.md).
 
-## 9. Private human chat
+If JacHammer has a day-of limitation, keep the application Jac-native and run
+the same full-stack build through `jac start` locally. Do not reintroduce
+Supabase during the hackathon.
 
-Matches and messages live in Supabase so its RLS and Realtime features can protect and deliver them.
+## 10. Explicitly later
 
-```text
-matches
-  id
-  user_a
-  user_b
-  created_at
-
-threads
-  id
-  match_id
-
-messages
-  id
-  thread_id
-  sender_id
-  body
-  created_at
-```
-
-Only the two matched users can read or write their thread. The agent does not impersonate either person. It can be explicitly called to help coordinate. SMS can notify someone of a match or new message and deep-link to the thread; a browser without a valid session verifies the phone number before private content is shown.
-
-## 10. Recommendations on earlier assistant proposals
-
-| Proposal | Recommendation |
-|---|---|
-| Ask exactly one question at a time | Keep as a soft conversational preference, not a rule. |
-| Elaborate no-match workflow | Keep only an honest short response; defer broadening machinery. |
-| Approve every profile rewrite | Confirm new meaning before first save; do not repeatedly confirm cosmetic rewrites. |
-| Exact/Adjacent/Serendipitous setting | Remove from V1. Let the AI infer and clarify breadth conversationally. |
-| React as a separate frontend | Prefer Jac client for the small interface; use a thin fallback only if necessary. |
-| Only one external-agent connection per person | Do not impose this product restriction. Avoid building connection management for the hackathon. |
-| Post-meeting feedback loop | Defer. The first proof is whether people actually match and chat. |
-| Formal event verification or event objects | Defer. The hackathon distributes the ordinary app link. |
-| Full safety/organizer operations system | Defer. Preserve basic ability to leave a chat; do not build event administration. |
-
-## 11. Explicitly later
-
-- Event accounts, event participant pools, and organizer dashboards. Shared event attendance can remain an ordinary time-bounded profile signal unless a future use case genuinely requires more.
-- Profile photos or appearance-first presentation.
-- Account recovery for lost phone numbers.
-- Voice as a first-class client.
-- Group matching.
-- Calendar integrations and automatic booking.
+- Phone OTP and account recovery.
+- Production-scale vector indexing.
+- Event accounts, attendance verification, and organizer dashboards.
+- Profile photos and appearance-first presentation.
+- Voice and native mobile clients.
+- Group matching, calendars, booking, and venue actions.
 - Connected-agent management and revocation UI.
-- Feedback-driven ranking and popularity/fairness systems.
-- Native mobile applications beyond a web/PWA experience.
+- Feedback-driven ranking and fairness systems.
+- Production multi-region operations beyond the verified Jac hosting target.
 
-## 12. Research basis
+## 11. Research basis
 
-- [Jac core concepts: persistent topology, walkers, and codespaces](https://docs.jaseci.org/quick-guide/what-makes-jac-different/)
-- [Jac Object-Spatial Programming reference](https://docs.jaseci.org/reference/language/osp/)
-- [byLLM typed outputs, agents, MCP clients, and LLM-guided traversal](https://docs.jaseci.org/reference/plugins/byllm/)
-- [Jac server and deployment capabilities](https://docs.jaseci.org/reference/plugins/jac-scale/)
-- [Jac full-stack backend integration](https://docs.jaseci.org/tutorials/fullstack/backend/)
-- [Supabase semantic retrieval with pgvector](https://supabase.com/docs/guides/ai/semantic-search)
-- [Supabase phone OTP login](https://supabase.com/docs/guides/auth/phone-login)
-- [Supabase Realtime Broadcast](https://supabase.com/docs/guides/realtime/broadcast)
+- [Jac MCP server](https://docs.jaseci.org/reference/mcp/)
+- [Jac agent skills and MCP](https://docs.jaseci.org/reference/agent-skills-and-mcp/)
+- [Jac server and scale](https://docs.jaseci.org/reference/plugins/jac-scale/)
+- [Jac full-stack client](https://docs.jaseci.org/reference/plugins/jac-client/)
+- [JacHacks SF hacker guide](https://jachacks.org/sf-guide/)
+- [JacHacks SF Devpost](https://jachacks-sf.devpost.com/)

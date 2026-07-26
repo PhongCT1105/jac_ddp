@@ -25,6 +25,11 @@ modified.
 Link the implementation spec and summarize the Jac, boundary, lane-specialist,
 and final implementation reviews.
 
+## Jac-native evidence
+
+Record the Jac version, confirm Jac MCP use, list key resources/guides, and list
+any approved non-Jac exception. Confirm product logic remains in Jac.
+
 ## Integration notes
 
 State dependencies, additive contract changes, configuration, merge ordering,

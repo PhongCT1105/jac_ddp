@@ -8,7 +8,7 @@
 
 ## 1. Purpose
 
-All application clients, core services, intelligence functions, repositories, compute providers, and evaluation tools use the same transport-independent operations and domain meanings. HTTP, MCP, Jac agent calls, Supabase, and in-memory fakes are adapters around this contract rather than separate product implementations.
+All application clients, core services, intelligence functions, persistence, compute providers, and evaluation tools use the same transport-independent operations and domain meanings. Jac server endpoints, MCP, in-process Jac calls, the persistent graph, and in-memory fakes share this contract rather than becoming separate product implementations.
 
 ## 2. Common rules
 
@@ -125,13 +125,13 @@ Each external boundary has a production and development adapter implementing the
 
 | Boundary | Development adapter | Production/integration adapter |
 |---|---|---|
-| Identity | Explicit fixture actor | Supabase phone-authenticated actor |
-| Product storage | In-memory repositories | Supabase repositories with RLS |
+| Identity | Explicit fixture actor | Jac-authenticated actor/root |
+| Product storage | In-memory state | Jac persistent nodes/edges with grants |
 | Embedding compute | `MockJacGrid` invoking exact local workload | `LiveJacGrid`, later another compatible provider |
-| Candidate retrieval | Complete fixture vector set | Supabase pgvector bounded retrieval |
+| Candidate retrieval | Complete fixture vector set | Complete eligible Jac projection set; future index adapter |
 | LLM | Recorded/deterministic response | Configured Jac `by llm()` model |
 | Notifications | Captured outbox | Configured delivery adapter |
-| Realtime | In-memory ordered messages | Supabase Realtime |
+| Realtime | In-memory ordered messages | Jac WebSocket/function endpoint with refresh fallback |
 
 Fakes reproduce boundary behavior, not alternative product rules.
 

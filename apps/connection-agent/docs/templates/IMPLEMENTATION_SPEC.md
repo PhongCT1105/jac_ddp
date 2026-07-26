@@ -6,6 +6,10 @@
 
 **Baseline SHA:** `<git rev-parse HEAD before work>`
 
+**Jac version:** `<jac --version>`
+
+**Jac MCP:** `<enabled/verified>`
+
 **Status:** Draft | Panel reviewed | Implemented
 
 ## Outcome and demo
@@ -36,6 +40,12 @@ Include negative and authorization behavior where applicable.
 
 Record likely failure modes, mitigations, and everything deliberately deferred.
 
+## Jac-native implementation evidence
+
+List the Jac MCP resources/guides used. List every authored non-Jac source file
+and its approved exception; write `none` when the implementation is fully
+Jac-native apart from declarative/native-format artifacts.
+
 ## Spec review record
 
 | Reviewer role | Reviewer/task | Finding | Severity | Resolution |
@@ -46,7 +56,8 @@ All blocking findings must be resolved before implementation.
 ### Spec review verdict
 
 Record each reviewer/task identifier, material reviewed, `jac --version`, Jac
-guide topics used by the Jac reviewer, and a final `ready` or `blocking` verdict.
+MCP resources/guides used by the Jac reviewer, and a final `ready` or `blocking`
+verdict.
 
 ## Implementation review record
 

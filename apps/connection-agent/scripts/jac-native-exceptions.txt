@@ -1,0 +1,3 @@
+# Exact repository-relative paths approved through JAC_NATIVE_ENGINEERING.md.
+# Keep this file empty unless the implementation spec records the exception and
+# the mandatory current-Jac reviewer approves it.

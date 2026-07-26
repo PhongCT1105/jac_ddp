@@ -47,7 +47,7 @@ The boundary is correctly isolated when all of these are true:
 - Connection Agent can be deployed on ordinary application hosting without installing or importing JacGrid's platform source.
 - Selecting local, JacGrid, or another compute provider is configuration plus an adapter, not a rewrite of matching behavior.
 - Every provider runs the same versioned `connection-embedding` package or returns output proven compatible with its exact schemas, model identity, and invariants.
-- Supabase remains the canonical product store regardless of compute provider.
+- Connection Agent's Jac persistent graph remains the canonical product store regardless of compute provider.
 - A compute-provider outage changes embedding job state and retry behavior, not consent, match, thread, or message semantics.
 
 Foundation does not need to deploy every provider. The local adapter plus recorded Boundary A fixtures prove the separation; a live JacGrid run proves the first external integration.
@@ -94,7 +94,7 @@ Application requirements:
 
 - `items[].id` is unique within the logical job.
 - `items[].text` is synthetic fixture text or canonical profile text explicitly approved for this computation.
-- The application does not send unrelated conversation history, phone numbers, credentials, Supabase identifiers that are unnecessary for correlation, candidate rankings, or match decisions.
+- The application does not send unrelated conversation history, phone numbers, credentials, internal Jac object/root identifiers unnecessary for correlation, candidate rankings, or match decisions.
 - Workload identity includes an immutable version and release-artifact hash.
 - The application submits the complete batch. It does not assign items to workers or depend on JacGrid's task partitioning.
 
@@ -185,7 +185,7 @@ Result requirements:
 - A partial, malformed, unverified, or mixed-version result is a failed job, never a successful result.
 - JacGrid does not return candidate rankings, pair assessments, cards, consent decisions, matches, threads, or messages.
 
-Connection Agent validates these invariants before storing vectors in Supabase.
+Connection Agent validates these invariants before storing vectors on Jac projection nodes.
 
 ### 4.5 Error contract
 
@@ -236,7 +236,7 @@ Minimum errors our adapter must handle:
 - deterministic valid and invalid fixtures;
 - a local runner and tests.
 
-The package contains no Supabase, candidate retrieval, candidate ranking, pair assessment, consent, matching, chat, worker scheduling, payment, or UI logic.
+The package contains no application persistence, candidate retrieval, candidate ranking, pair assessment, consent, matching, chat, worker scheduling, payment, or UI logic.
 
 ### 5.2 Manifest
 
@@ -360,7 +360,7 @@ Acceptance requires:
 5. Local, sandboxed, and distributed runs produce contract-compatible vectors within the declared tolerance.
 6. Our tests never require access to Phong's or Luke/Santhos's implementation modules.
 7. Connection Agent runs on conventional application hosting with the compute endpoint supplied by configuration.
-8. Replacing `LiveJacGrid` with the local adapter requires no changes to profiles, retrieval/ranking, consent, matches, threads, messages, or Supabase records.
+8. Replacing `LiveJacGrid` with the local adapter requires no changes to profiles, retrieval/ranking, consent, matches, threads, messages, or Jac graph records.
 
 ## 8. Non-goals
 

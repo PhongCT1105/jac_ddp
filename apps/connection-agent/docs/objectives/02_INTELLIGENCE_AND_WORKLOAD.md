@@ -18,7 +18,7 @@ workloads/connection-embedding/
 
 ## Read-only paths
 
-`src/contracts/`, `src/core/`, `src/adapters/`, `supabase/`, `web/`, `evals/`, `platform/`, and `sandbox/` are read-only. Request contract changes from the orchestration agent.
+`src/contracts/`, `src/core/`, `src/adapters/`, `src/backend/`, `web/`, `evals/`, `platform/`, and `sandbox/` are read-only. Request contract changes from the orchestration agent.
 
 ## Ordered specs
 
@@ -48,7 +48,7 @@ Retrieve a bounded neighborhood from the complete eligible embedding set. Exclud
 
 ### I5 — Jac candidate topology and walker
 
-Represent only the bounded candidate neighborhood in Jac and traverse it through a walker for reciprocal assessment orchestration. Supabase remains canonical; the Jac graph does not duplicate identity or messages.
+Represent the bounded candidate neighborhood in Jac and traverse it through a walker for reciprocal assessment orchestration. Persistent profile projections live in the canonical Jac product graph; temporary assessment edges remain rebuildable and do not duplicate private messages.
 
 **Acceptance:** the walker examines only retrieved candidates and returns typed, traceable evidence.
 

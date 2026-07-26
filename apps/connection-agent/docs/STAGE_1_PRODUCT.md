@@ -25,10 +25,13 @@ not by writing state directly from the interface.
 
 All branches implement the frozen
 [`Stage 1 operation contract`](specs/STAGE_1_OPERATION_CONTRACT.md).
+All implementation follows the mandatory
+[`Jac-native engineering policy`](JAC_NATIVE_ENGINEERING.md).
 
 ## 2. What is real in Stage 1
 
-- Jac source is used for the application core and intelligence.
+- All authored application runtime logic is Jac unless the mandatory Jac
+  reviewer approves a documented exception.
 - The first-party interface is implemented with the current Jac client stack.
 - The application-owned `connection-embedding` workload runs locally through
   `MockJacGrid` and processes the complete synthetic candidate pool.
@@ -37,8 +40,8 @@ All branches implement the frozen
   real product behavior.
 - Profiles, cards, and people shown in the demo are synthetic and traceable to
   immutable fixture revisions.
-- The same provider-neutral contracts remain usable by future Supabase and live
-  JacGrid adapters.
+- The same provider-neutral compute contract remains usable by local and live
+  JacGrid adapters while Jac's own backend owns product state.
 
 ## 3. Deliberately constrained
 
@@ -46,7 +49,7 @@ Stage 1 uses fixture identity, in-memory state, deterministic or recorded AI
 outputs, and local compute by default. It does not require:
 
 - phone OTP or production accounts;
-- Supabase migrations, RLS, pgvector, or Realtime;
+- durable Jac graph persistence, hosted authentication, or WebSockets;
 - a live JacGrid coordinator or worker;
 - a production embedding model or live LLM call;
 - persistence after the demo process is reset;
@@ -131,3 +134,8 @@ The orchestration agent later consolidates in this order:
 If time remains after the consolidated Stage 1 passes, the operator selects the
 next smallest Stage 2 brief. Stage 1 is never made incomplete in order to begin
 Stage 2.
+
+After local consolidation, the conference release gate in
+[`JAC_BACKEND_AND_JACHAMMER.md`](JAC_BACKEND_AND_JACHAMMER.md) hosts the
+full-stack Jac application through JacHammer and verifies its actual sandbox
+behavior before the demo.

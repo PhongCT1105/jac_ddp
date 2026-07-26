@@ -53,7 +53,7 @@ Add versioned datasets and rubrics for profile faithfulness, reciprocal fit, gro
 
 ### E6 — Integrated isolation tests
 
-Run selected scenarios against local/test Supabase and the real web client. Require both a test-environment sentinel and unique `test_run_id`; scope reset strictly to that run; capture notifications.
+Run selected scenarios against an isolated local/test Jac backend and the real web client. Require both a test-environment sentinel and unique `test_run_id`; scope reset strictly to that run; capture notifications.
 
 **Acceptance:** production URLs/markers fail closed, run A cannot reset run B, non-fixture local data survives, and production bundles expose no fixture impersonation or reset controls.
 

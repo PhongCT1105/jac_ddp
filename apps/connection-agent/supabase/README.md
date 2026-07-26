@@ -1,5 +1,9 @@
-# Supabase
+# Supabase (not active)
 
-Reserved for append-only migrations, RLS policies, local fixture seed configuration, and migration tests owned by the Data and Integrations objective.
+The hackathon architecture now uses Jac's built-in server, authentication,
+persistent graph, multi-user grants, and WebSocket support. Supabase is not a
+canonical store or current implementation objective.
 
-Production and test configuration must remain separate. Fixture identity and reset behavior must fail closed against production-marked projects.
+This placeholder remains only to preserve repository history. Do not add
+migrations, RLS policies, generated clients, or application logic here unless a
+later accepted architecture decision explicitly restores a Supabase adapter.

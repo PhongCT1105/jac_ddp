@@ -35,6 +35,17 @@ fast-forwarded to the exact `main` launch baseline. It aborts rather than
 overwriting divergent or unfinished work. Do not launch sessions unless all five
 paths print `Ready` at the same SHA.
 
+Before opening the implementation sessions, verify the global Jac MCP once:
+
+```bash
+codex mcp list
+jac mcp --inspect
+```
+
+`jac` must appear enabled. Codex clients normally discover MCP servers when a
+session starts, so open or restart the five implementation sessions only after
+this check.
+
 ## 3. Exact prompt for each session
 
 Open Codex in the worktree shown in the table and paste this prompt, replacing
@@ -47,9 +58,12 @@ The handoff is authoritative for your goal, writable paths, exact worktree and
 branch, review panel, acceptance criteria, checks, commit/push destination, and
 stopping point. Follow its required AGENT_WORKFLOW.md completely: draft the one
 lane implementation spec, have the spec reviewed by the required panel including
-a current-Jac expert, improve it, implement it, have the final implementation
+a current-Jac expert using the installed Jac MCP, improve it, implement it in
+Jac wherever Jac can reasonably implement it, have the final implementation
 reviewed, resolve blocking findings, run all checks, commit and push only your
-assigned branch, and return the required handoff evidence.
+assigned branch, and return the required handoff evidence. Choose the other
+reviewers appropriate to your lane, such as backend/security, AI/evaluation,
+UX/accessibility, or testing/privacy experts.
 
 Do not implement the lane's Stage 2/3 backlog, modify another lane, modify
 Phong's platform/ or Luke/Santhos's sandbox/, merge to main, or begin unreviewed

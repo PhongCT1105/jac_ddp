@@ -6,6 +6,11 @@ This workflow makes each handoff executable with a short prompt while keeping
 parallel sessions inside their assigned boundaries. The handoff document defines
 the outcome; this document defines how the session reaches it.
 
+Every session also follows
+[`JAC_NATIVE_ENGINEERING.md`](JAC_NATIVE_ENGINEERING.md). If a handoff and that
+policy appear to conflict, stop and request the smallest clarification rather
+than introducing non-Jac application code.
+
 ## 1. Authority and stopping point
 
 An implementation session is authorized to complete its assigned Stage 1
@@ -31,6 +36,8 @@ Before drafting or editing anything:
    confirm the Stage 1 documents are present at that baseline.
 5. Read the complete handoff and every document in its **Required reading**
    section.
+6. Verify `jac` appears as enabled in `codex mcp list`, record `jac --version`,
+   and inspect the available Jac resources with `jac mcp --inspect`.
 
 Do not create, rename, or switch branches. Do not merge or rebase from `main`
 during the assignment unless the orchestration session instructs it.
@@ -49,23 +56,27 @@ scope. Existing C/D/I/U/E objective briefs are the Stage 2/3 backlog.
 
 ## 4. Spec review panel
 
-Before code, use parallel read-only reviewer agents when the Codex session
-supports subagents. The panel must cover three independent roles:
+Before code, choose an appropriate panel of read-only reviewer agents and run
+the reviews in parallel when the Codex session supports subagents. The panel
+must cover three concerns:
 
-1. **Current-Jac expert — mandatory.** Verify the design against the installed
-   Jac version and current local/official Jac guidance. Check Jac syntax,
-   compiler/client behavior, package interoperability, testing, and whether a
-   simpler Jac-native design exists. Do not rely on remembered or old Jac
-   syntax.
+1. **Current-Jac expert — always mandatory.** Use the installed Jac MCP to
+   verify the design against current grammar, guides, examples, and compiler
+   behavior. Check syntax, client/server placement, package interoperability,
+   testing, and whether a simpler Jac-native design exists. Enforce
+   `JAC_NATIVE_ENGINEERING.md`; do not rely on remembered or old Jac syntax.
 2. **Architecture and boundary reviewer — mandatory.** Check internal contracts,
    directory ownership, provider neutrality, privacy, idempotency, and
    integration impact.
 3. **Lane specialist — mandatory.** Use the specialist named by the handoff to
    examine the lane's domain and acceptance tests.
 
-Two reviewer agents are sufficient when one reviewer explicitly covers both the
-architecture/boundary and lane-specialist roles. Use more only when the spec is
-genuinely high-risk; review overhead must not eclipse the small Stage 1 scope.
+The implementing session chooses reviewers appropriate to the work. For
+example: Jac plus backend/security for persistence; Jac plus AI/evaluation for
+intelligence; Jac client plus UX/accessibility for the interface. Two reviewer
+agents are sufficient when one reviewer explicitly covers both the
+architecture/boundary and lane-specialist concerns. Use more only when the spec
+is genuinely high-risk; the Jac role is never optional.
 
 Reviewers are advisory and read-only: they do not edit files. Give each reviewer
 the handoff, draft spec, shared contract, and relevant source. Ask for findings
@@ -84,9 +95,12 @@ to cover the three roles before implementation continues.
 ## 5. Implement the reviewed scope
 
 - Reuse the released contracts, fake adapters, and walking skeleton.
+- Author all application runtime logic in Jac and follow the exception process
+  in `JAC_NATIVE_ENGINEERING.md` for any proposed foreign-language source.
 - Keep product rules in the shared application core; adapters and clients do not
   invent competing lifecycle behavior.
-- Use current Jac guidance and compile/check after small changes.
+- Use Jac MCP and current Jac guidance while implementing, and compile/check
+  after small changes.
 - Add deterministic tests with each behavior. Unit tests do not make live LLM or
   external-service calls.
 - Treat unexpected contract needs as a proposal. A non-core lane records the
@@ -107,6 +121,7 @@ The reviewers check that:
 
 - the code implements the reviewed spec without scope growth;
 - Jac usage is current and compiles cleanly;
+- authored runtime code is Jac unless a documented exception was approved;
 - product and repository boundaries remain intact;
 - negative paths and acceptance criteria are tested;
 - no hidden dependency makes another lane or live service a Stage 1 blocker.
@@ -158,6 +173,7 @@ The final response to the operator must include:
 - concise delivered behavior and demo command;
 - checks run and their results;
 - spec-review and implementation-review evidence;
+- Jac version, MCP/guides used, and any approved non-Jac exception;
 - changed-path summary;
 - contract requests, known limitations, and integration notes;
 - confirmation that the branch was pushed and `main` was not changed.

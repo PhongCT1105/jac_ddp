@@ -23,6 +23,8 @@ implement all C1–C4.
 ## Required reading
 
 - [`../../AGENT_WORKFLOW.md`](../../AGENT_WORKFLOW.md)
+- [`../../JAC_NATIVE_ENGINEERING.md`](../../JAC_NATIVE_ENGINEERING.md)
+- [`../../JAC_BACKEND_AND_JACHAMMER.md`](../../JAC_BACKEND_AND_JACHAMMER.md)
 - [`../../STAGE_1_PRODUCT.md`](../../STAGE_1_PRODUCT.md)
 - [`../../specs/INTERNAL_CONTRACT_V1.md`](../../specs/INTERNAL_CONTRACT_V1.md)
 - [`../../specs/STAGE_1_OPERATION_CONTRACT.md`](../../specs/STAGE_1_OPERATION_CONTRACT.md)
@@ -102,6 +104,8 @@ apps/connection-agent/docs/specs/stage-1/core/HANDOFF_REPORT.md
 - A third actor cannot inspect or mutate the thread.
 - Reset produces a clean, repeatable demo state.
 - Existing foundation tests and `./apps/connection-agent/scripts/check.sh` pass.
+- All authored runtime code is Jac; any exception satisfies and records the
+  `JAC_NATIVE_ENGINEERING.md` process.
 
 ## Completion and handback
 

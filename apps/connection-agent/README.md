@@ -7,6 +7,7 @@ JacGrid is a replaceable embedding-compute provider. Application code does not i
 ## Prerequisites
 
 - Jac `0.34.6` or a compatible `0.34.x` release
+- Jac MCP registered in Codex (`codex mcp add jac -- jac mcp`)
 - A POSIX shell for the repository scripts
 
 No external service or secret is required for the foundation demo.
@@ -30,6 +31,11 @@ Connection Agent implementation sessions may edit `apps/connection-agent/` and, 
 See [`docs/STAGE_1_PRODUCT.md`](docs/STAGE_1_PRODUCT.md) for the current showable
 product cut and [`docs/AGENT_WORKFLOW.md`](docs/AGENT_WORKFLOW.md) for the
 mandatory spec-driven implementation/review process.
+
+[`docs/JAC_NATIVE_ENGINEERING.md`](docs/JAC_NATIVE_ENGINEERING.md) defines the
+mandatory Jac-first language and reviewer policy.
+[`docs/JAC_BACKEND_AND_JACHAMMER.md`](docs/JAC_BACKEND_AND_JACHAMMER.md) records
+the accepted Jac backend, JacGrid compute boundary, and JacHammer release gate.
 
 The released product interface is [`docs/specs/INTERNAL_CONTRACT_V1.md`](docs/specs/INTERNAL_CONTRACT_V1.md). Start parallel sessions from [`docs/SESSION_LAUNCH.md`](docs/SESSION_LAUNCH.md); each Stage 1 handoff defines one goal, writable paths, reviews, checks, push destination, and completion evidence.
 

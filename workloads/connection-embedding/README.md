@@ -15,4 +15,4 @@ jac test -d tests
 
 The command accepts one JSON document on standard input and writes one JSON document on standard output. Logs, if later added, belong on standard error and must not contain profile text or vectors by default.
 
-The package contains no Supabase, worker scheduling, payment, candidate ranking, pair assessment, consent, match, thread, message, or UI logic.
+The package contains no application persistence, worker scheduling, payment, candidate ranking, pair assessment, consent, match, thread, message, or UI logic.

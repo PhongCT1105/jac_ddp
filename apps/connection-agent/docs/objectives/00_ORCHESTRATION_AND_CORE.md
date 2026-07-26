@@ -57,11 +57,11 @@ Route first-party turns through the released operations. The in-process Jac agen
 ## Orchestration duties
 
 - Review proposed contract changes before implementation.
-- Assign coordinated Supabase migration timestamps.
-- Merge contracts/migrations before dependent adapters.
+- Coordinate persistent Jac graph-schema versions and upgrade contracts.
+- Merge contracts/schema changes before dependent adapters.
 - Run `./apps/connection-agent/scripts/check.sh` before and after every integration.
 - Reject changes outside an objective's writable paths unless an explicit handoff exists.
-- Keep an integration ledger of merged revisions, migrations, and workload versions.
+- Keep an integration ledger of merged revisions, graph-schema versions, and workload versions.
 - Resolve shared failures in core/integration paths, not inside Phong's or Luke/Santhos's code.
 
 ## Done

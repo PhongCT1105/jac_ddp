@@ -21,6 +21,8 @@ not implement E1–E7 in sequence.
 ## Required reading
 
 - [`../../AGENT_WORKFLOW.md`](../../AGENT_WORKFLOW.md)
+- [`../../JAC_NATIVE_ENGINEERING.md`](../../JAC_NATIVE_ENGINEERING.md)
+- [`../../JAC_BACKEND_AND_JACHAMMER.md`](../../JAC_BACKEND_AND_JACHAMMER.md)
 - [`../../STAGE_1_PRODUCT.md`](../../STAGE_1_PRODUCT.md)
 - [`../../specs/INTERNAL_CONTRACT_V1.md`](../../specs/INTERNAL_CONTRACT_V1.md)
 - [`../../specs/STAGE_1_OPERATION_CONTRACT.md`](../../specs/STAGE_1_OPERATION_CONTRACT.md)
@@ -63,7 +65,7 @@ points it at the integrated Core façade without changing scenario semantics.
 
 - Layered inspector UI.
 - Qualitative LLM judging and broad datasets.
-- Supabase/browser/production isolation tests.
+- Hosted Jac backend/browser/production isolation tests.
 - Regression dashboards and cross-version reporting.
 - Real identities or production data.
 
@@ -90,6 +92,8 @@ apps/connection-agent/docs/specs/stage-1/evaluation-quality/HANDOFF_REPORT.md
   matching, consent, authorization, or message implementation of its own.
 - Provide an `evals/check.sh` hook that the root quality gate can call.
 - Existing foundation tests and `./apps/connection-agent/scripts/check.sh` pass.
+- Evaluation runners and tests are Jac wherever supported; any exception follows
+  `JAC_NATIVE_ENGINEERING.md`.
 
 ## Completion and handback
 

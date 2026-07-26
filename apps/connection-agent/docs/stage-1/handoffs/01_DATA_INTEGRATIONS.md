@@ -16,12 +16,14 @@ product: fixture identity, immutable fixture-profile access, and the existing
 `MockJacGrid` compute adapter. Core retains all demo lifecycle state and reset
 behavior.
 
-This is one Stage 1 specification, not D1–D6. Production Supabase and live
-service integration are deferred.
+This is one Stage 1 specification, not D1–D6. Durable Jac backend and live
+service integration are deferred until the local product is green.
 
 ## Required reading
 
 - [`../../AGENT_WORKFLOW.md`](../../AGENT_WORKFLOW.md)
+- [`../../JAC_NATIVE_ENGINEERING.md`](../../JAC_NATIVE_ENGINEERING.md)
+- [`../../JAC_BACKEND_AND_JACHAMMER.md`](../../JAC_BACKEND_AND_JACHAMMER.md)
 - [`../../STAGE_1_PRODUCT.md`](../../STAGE_1_PRODUCT.md)
 - [`../../specs/INTERNAL_CONTRACT_V1.md`](../../specs/INTERNAL_CONTRACT_V1.md)
 - [`../../specs/STAGE_1_OPERATION_CONTRACT.md`](../../specs/STAGE_1_OPERATION_CONTRACT.md)
@@ -38,7 +40,7 @@ apps/connection-agent/docs/specs/stage-1/data-integrations/
 ```
 
 Everything else is read-only, including `src/contracts/`, `src/core/`,
-`src/intelligence/`, `supabase/`, `web/`, `evals/`, `workloads/`, `platform/`,
+`src/backend/`, `src/intelligence/`, `web/`, `evals/`, `workloads/`, `platform/`,
 and `sandbox/`.
 
 ## Required deliverable
@@ -65,7 +67,7 @@ Do not log profile text, vectors, hidden decisions, or secrets by default.
 
 ## Explicit deferrals
 
-- Supabase schema, migrations, repositories, RLS, pgvector, and Realtime.
+- Durable Jac graph persistence, production accounts, grants, and WebSockets.
 - Phone OTP and production identity.
 - Live JacGrid networking, polling, retries, and credentials.
 - Notifications and multi-process persistence.
@@ -94,6 +96,8 @@ apps/connection-agent/docs/specs/stage-1/data-integrations/HANDOFF_REPORT.md
 - `MockJacGrid` still invokes the exact workload in chunks and returns one
   complete, validated result for all profiles.
 - Existing foundation tests and `./apps/connection-agent/scripts/check.sh` pass.
+- All authored runtime code is Jac; any exception satisfies and records the
+  `JAC_NATIVE_ENGINEERING.md` process.
 
 ## Completion and handback
 

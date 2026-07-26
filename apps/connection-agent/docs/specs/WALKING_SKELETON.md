@@ -166,10 +166,10 @@ Given 30 or more fixture profiles and no external services:
 
 ## 11. Exit condition
 
-The walking skeleton is complete when the full scenario passes entirely through released contracts and application operations, and swapping in a future Supabase repository, `LiveJacGrid`, or another compatible compute adapter requires no change to the scenario's product rules.
+The walking skeleton is complete when the full scenario passes entirely through released contracts and application operations, and swapping in the persistent Jac graph, `LiveJacGrid`, or another compatible compute adapter requires no change to the scenario's product rules.
 
 ## 12. Out of scope
 
-The foundation skeleton does not require phone OTP, production Supabase, Supabase Realtime, live LLM reasoning, polished web UI, MCP hosting, live notifications, a live JacGrid coordinator, physical workers, sandbox isolation, verification payments, venue booking, or production deployment.
+The foundation skeleton does not require phone OTP, hosted Jac persistence, Jac WebSockets, live LLM reasoning, polished web UI, MCP hosting, live notifications, a live JacGrid coordinator, physical workers, sandbox isolation, verification payments, venue booking, or production deployment.
 
 It also does not import, modify, or test the internal implementation of `platform/` or `sandbox/`. Live integration is tested later only through the accepted boundary contracts.

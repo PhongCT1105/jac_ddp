@@ -22,6 +22,8 @@ U1–U6. Do not implement the production experience backlog.
 ## Required reading
 
 - [`../../AGENT_WORKFLOW.md`](../../AGENT_WORKFLOW.md)
+- [`../../JAC_NATIVE_ENGINEERING.md`](../../JAC_NATIVE_ENGINEERING.md)
+- [`../../JAC_BACKEND_AND_JACHAMMER.md`](../../JAC_BACKEND_AND_JACHAMMER.md)
 - [`../../STAGE_1_PRODUCT.md`](../../STAGE_1_PRODUCT.md)
 - [`../../specs/INTERNAL_CONTRACT_V1.md`](../../specs/INTERNAL_CONTRACT_V1.md)
 - [`../../specs/STAGE_1_OPERATION_CONTRACT.md`](../../specs/STAGE_1_OPERATION_CONTRACT.md)
@@ -38,7 +40,7 @@ apps/connection-agent/docs/specs/stage-1/product-experience/
 ```
 
 Everything else is read-only, including `src/contracts/`, `src/core/`,
-`src/adapters/`, `src/intelligence/`, `supabase/`, `evals/`, `workloads/`,
+`src/adapters/`, `src/backend/`, `src/intelligence/`, `evals/`, `workloads/`,
 `platform/`, and `sandbox/`.
 
 ## Required deliverable
@@ -71,7 +73,7 @@ Those responses are replaced by the core façade during consolidation.
 ## Explicit deferrals
 
 - Phone OTP and production identity.
-- Supabase persistence and Realtime.
+- Durable Jac graph persistence, production auth, and WebSocket delivery.
 - Separate devices, refresh persistence, offline recovery, and deep links.
 - Live LLM/JacGrid requirements.
 - Public MCP, notifications, coordination, and final production polish.
@@ -104,6 +106,8 @@ apps/connection-agent/docs/specs/stage-1/product-experience/HANDOFF_REPORT.md
 - The lane provides a deterministic component/browser smoke test and a
   `web/check.sh` hook that the root quality gate can call.
 - `./apps/connection-agent/scripts/check.sh` passes.
+- The authored client and server-call surface is Jac; generated JavaScript is
+  build output, and any authored non-Jac exception is explicitly approved.
 
 ## Completion and handback
 

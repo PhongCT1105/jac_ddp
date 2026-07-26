@@ -2,9 +2,9 @@
 
 > **Target-stage note:** This document describes the final live hackathon
 > presentation. The earlier, time-protected local showcase is defined in
-> [`STAGE_1_PRODUCT.md`](STAGE_1_PRODUCT.md). Phone OTP, production persistence,
-> live messaging, and coordination remain final-demo goals but are deliberately
-> not Stage 1 blockers.
+> [`STAGE_1_PRODUCT.md`](STAGE_1_PRODUCT.md). Hosted Jac authentication,
+> persistent graph state, live messaging, and coordination remain final-demo
+> goals but are deliberately not Stage 1 blockers.
 
 ## Goal
 
@@ -146,9 +146,9 @@ If Connection Agent's public MCP connection is ready, someone may use ChatGPT, C
 
 When the attendee has connected Connection Agent to their chosen agent, that agent can submit the approved draft and retrieve curated introductions using Connection Agent's capability layer. The accepted private thread still lives in Connection Agent web, so two people do not need to use the same agent host.
 
-## What must be real in the demo
+## What must be real in the final demo
 
-- Phone-number sign-in.
+- Jac-hosted sign-in using username/email or configured SSO.
 - Several real users who opened the same ordinary app link.
 - Canonical Markdown profiles with full names.
 - Conversational profile creation and current intent.
@@ -158,13 +158,15 @@ When the attendee has connected Connection Agent to their chosen agent, that age
 - A persistent two-person private chat.
 - Live message delivery or a clear refresh experience.
 - A minimal coordination suggestion.
+- A public JacHammer URL with server-side secrets kept out of the client.
 
 ## What can be deliberately constrained
 
 - Matching may run on demand or in short batches.
 - Only a few curated introductions are available.
 - The venue list may be manual.
-- SMS can be limited to OTP and an accepted-introduction notification.
+- Phone OTP and SMS notifications may remain deferred; they are not evidence of
+  the product's core value.
 - The public MCP integration may be implemented in parallel and omitted from the live demo if it is not ready.
 - Event accounts, participant pools, and attendance verification do not exist.
 

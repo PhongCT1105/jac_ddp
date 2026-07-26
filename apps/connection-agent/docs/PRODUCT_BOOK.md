@@ -68,7 +68,7 @@ one canonical Markdown profile
 
 Derived data may include embeddings, free-form facets or tags, and other search signals. These exist to retrieve a short candidate list efficiently; they do not replace the Markdown profile and are not themselves the user's public identity.
 
-The application team owns the versioned computation that creates embeddings. In the hackathon integration, JacGrid distributes that workload across workers and returns verified vectors, while Supabase remains the durable store for the current projection. JacGrid does not rank people or own profiles, consent, suggestions, matches, or messages.
+The application team owns the versioned Jac computation that creates embeddings. In the hackathon integration, JacGrid distributes that workload across workers and returns verified vectors, while Connection Agent's Jac persistent graph stores the current projection and all canonical product state. JacGrid does not rank people or own profiles, consent, suggestions, matches, or messages.
 
 A person's private ChatGPT, Claude, or other agent context stays outside Connection Agent. Their agent may use that context or public web research to propose additions, but the person decides what enters the Connection Agent Markdown profile.
 

@@ -7,6 +7,14 @@ This document divides the hackathon build among several Codex sessions. It defin
 > [`stage-1` handoffs](stage-1/README.md). The detailed C/D/I/U/E sequences in
 > this document are the Stage 2/3 backlog, not instructions to complete six to
 > eight specs before producing a demo.
+>
+> **Architecture supersession:**
+> [`JAC_BACKEND_AND_JACHAMMER.md`](JAC_BACKEND_AND_JACHAMMER.md) replaces every
+> Supabase-specific instruction in this older detailed plan. Do not implement
+> Supabase migrations, RLS, Auth, pgvector, or Realtime from the historical
+> sections below. Use the current
+> [`Data/Backend objective`](objectives/01_DATA_AND_INTEGRATIONS.md), Jac's
+> persistent graph/auth/grants/WebSockets, and JacHammer release gate instead.
 
 ## 1. Build strategy
 
@@ -15,9 +23,9 @@ Connection Agent should be built as one application core with several adapters a
 ```text
 First-party web conversation ----+
                                  |
-External agent through MCP ------+-- Connection Agent application core -- Supabase
+External agent through MCP ------+-- Connection Agent Jac core -- Jac persistent graph
                                  |             |                  |
-Evaluation laboratory -----------+             +-- Jac intelligence
+Evaluation laboratory -----------+             +-- Jac intelligence/auth/realtime
                                  |                                |
                                  +-------------------------- JacGrid compute
 ```
@@ -28,8 +36,8 @@ Development has four stopping points:
 
 1. **Foundation — complete:** repository, contracts, boundaries, fakes, and the terminal walking skeleton.
 2. **Stage 1 showable local product — current:** five parallel sessions each deliver one reviewed handoff; orchestration consolidates them into the complete Jac web demo.
-3. **Stage 2 integrated product:** replace selected fakes with Supabase, phone identity, live-compatible JacGrid, configured AI, and realtime delivery.
-4. **Stage 3 hardened product:** production failure recovery, complete evaluation, accessibility/polish, deployment, and optional capabilities.
+3. **Stage 2 integrated product:** replace selected fakes with Jac persistence/auth/grants, live-compatible JacGrid, configured AI, and Jac realtime delivery.
+4. **Stage 3 hardened product:** verify JacHammer hosting, production failure recovery, complete evaluation, accessibility/polish, and optional capabilities.
 
 Stage 1 remains green and showable before Stage 2 begins. If time ends after any
 stopping point, the preceding product still works.
@@ -61,7 +69,7 @@ The public MCP adapter, SMS notifications beyond OTP, automatic venue discovery/
 
 ### 3.1 Canonical data
 
-Supabase is canonical for:
+Connection Agent's Jac persistent graph is canonical for:
 
 - Authenticated user identity.
 - Full name and canonical Markdown profile.
@@ -69,9 +77,9 @@ Supabase is canonical for:
 - Cards shown and interest decisions.
 - Matches, threads, and messages.
 
-Jac owns the matching workflow and temporary candidate topology used to reason over a retrieved neighborhood. It does not become a competing source of truth for identity or human messages.
+Jac owns both durable product topology and the temporary candidate neighborhood used for reasoning. Per-user roots and explicit grants protect cross-user access.
 
-JacGrid is a replaceable distributed-compute dependency, not a source of product truth. The connection-app team owns the immutable embedding workload that JacGrid executes. JacGrid returns verified vectors; Supabase stores the current derived projection, and our Jac logic retrieves and ranks candidates.
+JacGrid is a replaceable distributed-compute dependency, not a source of product truth. The connection-app team owns the immutable embedding workload that JacGrid executes. JacGrid returns verified vectors; Jac projection nodes store them, and our Jac logic retrieves and ranks candidates.
 
 ### 3.2 Application operations
 
@@ -94,13 +102,13 @@ Each external dependency has both a real and fake implementation:
 
 | Boundary | Real implementation | Development implementation |
 |---|---|---|
-| Identity | Supabase phone OTP session | Fixture actor selected by the evaluation lab |
-| Profiles and state | Supabase repositories | In-memory fixture repository |
-| Candidate retrieval | Supabase pgvector | Fixture list or deterministic similarity table |
+| Identity | Jac authenticated actor/root | Fixture actor selected by the evaluation lab |
+| Profiles and state | Jac persistent graph with explicit grants | In-memory fixture state |
+| Candidate retrieval | Complete eligible Jac projection set; future index adapter | Fixture list or deterministic similarity table |
 | Embedding compute | JacGrid job client executing our `connection-embedding` workload | Local Contract C harness / `MockJacGrid` invoking the same workload |
 | LLM | Configured model through Jac/byLLM | Recorded response or deterministic stub where useful |
 | Notifications | SMS provider | Captured notification outbox |
-| Realtime messages | Supabase Realtime | In-memory event stream |
+| Realtime messages | Jac WebSocket/function endpoint | In-memory event stream |
 
 Fakes are not alternate product logic. They implement the same interfaces and make independent work possible.
 
@@ -114,9 +122,10 @@ Current repository ownership:
 apps/connection-agent/src/contracts/     orchestration-owned internal contract
 apps/connection-agent/src/core/          orchestration-owned product lifecycle
 apps/connection-agent/src/adapters/      data and service integrations
+apps/connection-agent/src/backend/       Jac persistence, auth, grants, endpoints, realtime
 apps/connection-agent/src/intelligence/  profile, retrieval, matching, and cards
 apps/connection-agent/web/               first-party product experience
-apps/connection-agent/supabase/          migrations, RLS, and local seed
+apps/connection-agent/supabase/          inactive historical placeholder
 apps/connection-agent/evals/             scenarios, rubrics, and reports
 apps/connection-agent/tests/             owned and cross-objective tests
 apps/connection-agent/docs/              product and objective documentation
@@ -167,7 +176,7 @@ Before branch fan-out, add formatting, contract validation, unit tests, and the 
 
 ### F5 — Integration environment
 
-Provide one documented local configuration that connects the web client, Jac service, local Supabase, evaluation laboratory, and either `MockJacGrid` or a live JacGrid coordinator. Centralize environment-variable names and provide safe example values without secrets.
+Provide one documented local configuration that connects the Jac client/server, local Jac persistent graph, evaluation laboratory, and either `MockJacGrid` or a live JacGrid coordinator. Centralize environment-variable names and provide safe example values without secrets.
 
 **Exit condition:** a newly created worktree can reach the integrated local application by following the repository instructions.
 
@@ -203,7 +212,7 @@ The exact card already shown remains immutable in history. “Tell me more” ma
 
 ### C3 — Atomic interest, match, and thread lifecycle
 
-Keep each interest decision private. An `open` decision creates no user-visible reciprocity until the other person independently opens their linked recipient-specific suggestion. Passing, blocking, withdrawing, expiring, invalidating, or superseding an opportunity follows the C2 policy and cannot silently reuse a previous open. The transition from reciprocal open decisions to one match and one thread is an idempotent server-side transaction owned by Supabase, never two client writes.
+Keep each interest decision private. An `open` decision creates no user-visible reciprocity until the other person independently opens their linked recipient-specific suggestion. Passing, blocking, withdrawing, expiring, invalidating, or superseding an opportunity follows the C2 policy and cannot silently reuse a previous open. The transition from reciprocal open decisions to one match and one thread is an idempotent Jac server-side operation, never two client writes.
 
 **Depends on:** F1–F4; initially runs against the in-memory transaction boundary, then P3.
 
@@ -221,35 +230,35 @@ Route first-party turns between the C1 profile lifecycle, C2 suggestion lifecycl
 
 ### Ownership
 
-This strand owns Supabase migrations and policies, concrete repositories, phone identity, human-message transport, notifications, the JacGrid service client, and the thin MCP adapter. It does not decide how embeddings are calculated, profiles are written, candidates are ranked, or cards are worded.
+This strand owns the persistent Jac graph, Jac authentication and grants, concrete repositories, human-message transport, notifications, the JacGrid service client, and the thin MCP adapter. It does not decide how embeddings are calculated, profiles are written, candidates are ranked, or cards are worded.
 
 ### Sequential specs
 
-#### P1 — Core persistence schema
+#### P1 — Persistent Jac product graph
 
-Create migrations for first-party agent sessions/events, profile proposals and approvals, versioned profiles, disposable derived profile search data, recipient-specific suggestions/card snapshots and follow-up disclosures, interest decisions, blocks, matches, threads, notification outbox entries, and messages. Add source revision IDs, canonical unordered pair/opportunity IDs, timestamps, state constraints, and uniqueness rules needed for idempotency.
+Define Jac nodes, edges, roots, and versioned schema evolution for first-party agent sessions/events, profile proposals and approvals, versioned profiles, disposable derived profile search data, recipient-specific suggestions/card snapshots and follow-up disclosures, interest decisions, blocks, matches, threads, notification outbox entries, and messages. Add source revision IDs, canonical unordered pair/opportunity IDs, timestamps, state constraints, and uniqueness rules needed for idempotency.
 
 There is no event-membership table, active/inactive profile flag, or private-vs-shareable profile split. All canonical Markdown is readable by the matching service and eligible for relevant selection. V1 deterministic exclusion is limited to authentication/system eligibility and explicit blocks; other natural-language constraints are evaluated reciprocally by the pair-assessment layer.
 
 **Depends on:** F1.
 
-**Exit condition:** migrations apply cleanly to a fresh local Supabase database and repository tests can create the complete fixture state.
+**Exit condition:** the graph initializes cleanly in a fresh local Jac server, schema evolution is tested, and repository tests can create the complete fixture state.
 
-#### P2 — Authorization and RLS
+#### P2 — Jac authorization, roots, and grants
 
-Implement an explicit role/action/table access matrix and its RLS policies. A person can manage their own profile and decisions; only matched participants can access a private thread; neither participant can directly read the other's phone number, canonical Markdown, derived search record, raw pair assessment, trace, or pending decision through client APIs. They may read only the recipient-specific cards and follow-up disclosures that the trusted matching service generated for them. Define trusted server-only access for matching and atomic match operations. Cover agent sessions, proposals, profile revisions, suggestions/card snapshots, follow-up disclosures, blocks, decisions, matches, threads, messages, notifications, search projections, assessments, and Realtime subscriptions.
+Implement an explicit role/action/object access matrix using Jac's per-user roots, grants, authenticated walkers, and server-side operations. A person can manage their own profile and decisions; only matched participants can access a private thread; neither participant can directly read the other's canonical Markdown, derived search record, raw pair assessment, trace, or pending decision through client APIs. They may read only the recipient-specific cards and follow-up disclosures that the trusted matching service generated for them. Define trusted server-only access for matching and atomic match operations. Cover agent sessions, proposals, profile revisions, suggestions/card snapshots, follow-up disclosures, blocks, decisions, matches, threads, messages, notifications, search projections, assessments, and WebSocket subscriptions.
 
 **Depends on:** P1.
 
-**Exit condition:** positive and negative tests cover every table/role, direct-ID guessing, unauthorized Realtime subscriptions, cross-user writes, raw-profile reads, hidden one-sided decisions, and third-party thread access.
+**Exit condition:** positive and negative tests cover every object/role, direct-ID guessing, unauthorized WebSocket subscriptions, cross-user writes, raw-profile reads, hidden one-sided decisions, and third-party thread access.
 
-#### P3 — Repository adapters
+#### P3 — Persistent Jac repository adapters
 
-Implement the shared core repository interfaces against Supabase. Preserve the same behavior as the in-memory fakes. Make reciprocal-interest detection plus match/thread creation one atomic, idempotent server transaction.
+Implement the shared core repository interfaces against the persistent Jac graph. Preserve the same behavior as the in-memory fakes. Make reciprocal-interest detection plus match/thread creation one atomic, idempotent server operation.
 
 **Depends on:** P1–P2 and F2.
 
-**Exit condition:** the walking skeleton passes with Supabase adapters substituted for in-memory state, including simultaneous and retried open decisions producing exactly one match and one thread.
+**Exit condition:** the walking skeleton passes with persistent Jac adapters substituted for in-memory state, including simultaneous and retried open decisions producing exactly one match and one thread.
 
 #### P3J — JacGrid compute adapter
 
@@ -261,17 +270,17 @@ The mock invokes the exact application-owned workload locally and emits realisti
 
 **Exit condition:** identical fixture input produces contract-equivalent vectors through the local workload harness, `MockJacGrid`, and a recorded live-response fixture; duplicate submission creates one logical paid job; malformed or partial results are rejected before persistence.
 
-#### P4 — Phone OTP and application actor
+#### P4 — Jac authentication and application actor
 
-Implement first-party phone sign-in and translate a valid Supabase session into the transport-independent authenticated actor used by the core.
+Implement the simplest conference-ready Jac authentication supported by the chosen host—username/email or configured SSO—and translate a valid Jac session into the transport-independent authenticated actor used by the core. Phone OTP is a later optional adapter, not a Stage 1 dependency.
 
 **Depends on:** P2–P3.
 
-**Exit condition:** a real test phone flow reaches the same profile as subsequent sessions; core logic contains no phone-provider assumptions.
+**Exit condition:** a hosted test account reaches the same profile across subsequent sessions; core logic contains no identity-provider assumptions.
 
-#### P5 — Realtime private chat
+#### P5 — Jac WebSocket private chat
 
-Implement persistent messages, realtime delivery, reconnection, and thread authorization. Keep human messages separate from agent utterances and coordination suggestions.
+Implement persistent messages, Jac WebSocket delivery, reconnection, and thread authorization. Keep human messages separate from agent utterances and coordination suggestions.
 
 **Depends on:** P2–P3. It can use a seeded match before real matching exists.
 
@@ -319,7 +328,7 @@ Given existing Markdown and a user utterance, propose a faithful Markdown update
 
 #### I3 — Derived search projection
 
-Build and version the application-owned `connection-embedding` workload, including its Jac entrypoint, immutable manifest, exact model artifact/revision, dependency lock, input/output schemas, normalization, resource declaration, numeric tolerance, and deterministic fixtures. The workload contains no Supabase, scheduling, worker, payment, matching, or UI logic.
+Build and version the application-owned `connection-embedding` workload, including its Jac entrypoint, immutable manifest, exact model artifact/revision, dependency lock, input/output schemas, normalization, resource declaration, numeric tolerance, and deterministic fixtures. The workload contains no application persistence, scheduling, worker, payment, matching, or UI logic.
 
 Generate an embedding and optional free-form facets from an identified canonical Markdown revision through the embedding-compute interface. Keep projections disposable and record the profile revision, workload ID/version, model artifact hash, index version, JacGrid job/result hash when applicable, and generation time that produced them.
 
@@ -393,13 +402,13 @@ Create the minimal responsive Jac client/PWA conversation view, message composer
 
 **Exit condition:** the shell works on a narrow mobile viewport and clearly distinguishes user, Connection Agent, card, and system messages.
 
-#### U2 — Development actor and production phone entry
+#### U2 — Development actor and Jac-auth entry
 
-Add a local-only fixture-persona selector and the production phone OTP screens behind the identity boundary. The fixture selector must be absent from production builds.
+Add a local-only fixture-persona selector and the selected Jac-auth entry screens behind the identity boundary. The fixture selector must be absent from production builds.
 
 **Depends on:** the F2 fixture actor; production activation depends on P4.
 
-**Exit condition:** the same UI can run as a fixture person locally and as a phone-authenticated actor in an integrated environment.
+**Exit condition:** the same UI can run as a fixture person locally and as a Jac-authenticated actor in an integrated environment.
 
 #### U3 — Profile conversation and approval
 
@@ -467,7 +476,7 @@ Define a scenario format containing fixture people, canonical Markdown, dated co
 
 #### E2 — Local evaluation laboratory shell
 
-Build a local-only interface that selects a scenario and actor, sends conversation turns, switches between people, resets state, and displays the user-facing experience. It connects only to a separate local/test Supabase environment or in-memory core, never to production data.
+Build a local-only interface that selects a scenario and actor, sends conversation turns, switches between people, resets state, and displays the user-facing experience. It connects only to an isolated local/test Jac backend or in-memory core, never to production data.
 
 **Depends on:** E1 and the shared core operations.
 
@@ -515,7 +524,7 @@ Add model-based judging only for subjective criteria such as faithfulness, invas
 
 #### E8 — Integrated and production-isolation tests
 
-Run selected scenarios through local Supabase and the real web client. Seed clearly namespaced test identities for RLS testing without sending SMS, route all notifications to a captured sink, and require both a dedicated test-environment sentinel/attestation and a unique `test_run_id` before seeding or reset. Fail closed before mutation if either is missing or if the target is a production project URL or production-marked database. Reset may delete only rows carrying that run ID. Verify that fixture impersonation, inspectors, service credentials, test configuration, and reset controls are absent from production browser bundles and deployed routes, and that server APIs reject hand-crafted fixture actor headers/tokens.
+Run selected scenarios through an isolated local Jac backend and the real web client. Seed clearly namespaced test identities for per-user-root and grant testing, route all notifications to a captured sink, and require both a dedicated test-environment sentinel/attestation and a unique `test_run_id` before seeding or reset. Fail closed before mutation if either is missing or if the target is a production deployment. Reset may delete only graph objects carrying that run ID. Verify that fixture impersonation, inspectors, service credentials, test configuration, and reset controls are absent from production browser bundles and deployed routes, and that server operations reject hand-crafted fixture actor headers/tokens.
 
 **Depends on:** P2–P5, U2–U6, and E4.
 
@@ -559,11 +568,11 @@ Publish the immutable application-owned embedding workload, install it unchanged
 
 ### M4 — Real two-sided suggestion, mutual match, and chat
 
-A receives a tailored card for B and opens. Without learning A's decision, B later receives a separately assessed and tailored card for A. Each asks at least one grounded follow-up. The recorded cards and disclosures use the correct profile revisions and reveal neither unrelated transcript content nor the other person's pending decision. Independent opens create one persistent match, after which the two actors exchange realtime messages under RLS.
+A receives a tailored card for B and opens. Without learning A's decision, B later receives a separately assessed and tailored card for A. Each asks at least one grounded follow-up. The recorded cards and disclosures use the correct profile revisions and reveal neither unrelated transcript content nor the other person's pending decision. Independent opens create one persistent match, after which the two actors exchange realtime messages through an explicitly granted Jac thread.
 
-### M5 — Phone-authenticated hackathon loop
+### M5 — Jac-authenticated hackathon loop
 
-Two phone-authenticated people complete M2–M4 on ordinary phones, invoke one minimal coordination suggestion, and can return through an authenticated direct link. Live non-OTP SMS delivery is not required.
+Two Jac-authenticated people complete M2–M4 on ordinary phones, invoke one minimal coordination suggestion, and can return through an authenticated direct link. Phone OTP and SMS delivery are not required.
 
 ### M6 — Optional external-agent loop
 
@@ -601,9 +610,9 @@ Do not wait until each subsystem is “finished.” The product should remain ve
 
 Recommended directory ownership reduces conflict, but integration tests and shared contracts will still require coordination. The integration lead owns those conflict-prone surfaces. A workstream does not edit another lane's owned paths without an explicit handoff.
 
-Shared contracts and schema migrations merge before the adapters that consume them. Supabase migrations are append-only after merge, use coordinated names/timestamps, and must apply successfully from an empty database as well as the current integration state. A workstream never rewrites another merged migration to resolve a local conflict.
+Shared contracts and Jac graph-schema changes merge before the adapters that consume them. Schema changes are forward-compatible after merge, use coordinated versions, and must initialize from empty state as well as upgrade the current integration state. A workstream never rewrites another merged schema release to resolve a local conflict.
 
-Every Jac assessment, candidate edge, card, and explanation carries the profile/search revision IDs it used. Supabase remains the durable transaction boundary; Jac topology is disposable. The integration layer rejects or revalidates stale AI output rather than committing it against newer profile state.
+Every Jac assessment, candidate edge, card, and explanation carries the profile/search revision IDs it used. The persistent Jac graph is the durable application boundary; temporary assessment topology may be rebuilt. The integration layer rejects or revalidates stale AI output rather than committing it against newer profile state.
 
 ## 14. Evaluation principles
 
@@ -623,12 +632,12 @@ Record enough context to reproduce a result: scenario version, canonical profile
 ## 15. Critical safeguards
 
 - Fixture actors and impersonation controls exist only in local/test builds.
-- Evaluation uses a separately configured local/test Supabase project or database, clearly namespaced fixture identities, and a notification sink; it never receives production credentials or data.
+- Evaluation uses a separately configured local/test Jac backend, clearly namespaced fixture identities, and a notification sink; it never receives production credentials or data.
 - Startup and CI guards require a test-environment sentinel plus per-run ownership and refuse fixture/reset tools when the target is marked as or resolves to production.
-- End-to-end RLS tests use isolated seeded identities and never require real SMS delivery.
-- Service-role credentials never enter the browser.
+- End-to-end root/grant tests use isolated seeded identities and never require real SMS delivery.
+- Server credentials never enter the browser.
 - JacGrid service credentials never enter the browser; only the server-side adapter submits compute jobs.
-- Distributed jobs contain only synthetic or explicitly approved matching text and opaque profile-revision IDs. Phone numbers, private messages, unapproved drafts, and unrelated Supabase data never enter worker payloads.
+- Distributed jobs contain only synthetic or explicitly approved matching text and opaque profile-revision IDs. Identity credentials, private messages, unapproved drafts, and unrelated Jac graph data never enter worker payloads.
 - The Luke/Santhos sandbox protects worker machines from workloads; it does not by itself make plaintext job inputs private from worker owners. Real private-profile distribution requires a later privacy design.
 - One immutable application-owned embedding implementation is used by local, mock, worker, and verification paths; Phong and Luke/Santhos do not maintain competing algorithms.
 - The matching AI may read everything in canonical Markdown but presents only a relevant subset.
@@ -651,7 +660,7 @@ The hackathon product is demo-ready when:
 - Cards are readable on a phone and remain in conversation history.
 - Both sides independently receive truthful explanations and can opt in or pass.
 - Reciprocal interest creates exactly one authorized private thread.
-- Realtime human messaging works on two phones.
+- Jac WebSocket or refresh-fallback human messaging works on two phones.
 - Either participant can explicitly request one grounded, non-committing coordination suggestion.
 - The no-credible-suggestion path is honest.
 - The evaluation lab can reproduce and reset the core two-person journey with fixture users.
@@ -662,8 +671,8 @@ Live non-OTP notifications, the public MCP path, broad batch judging, and a poli
 
 ### Evaluation-complete
 
-The quality workstream is complete when the lab can inspect each profile/retrieval/reasoning/rendering/state layer, run the foundational scenario suite in batch, compare versioned results, support human review of qualitative judgments, and exercise the integrated local Supabase/web path without access to production.
+The quality workstream is complete when the lab can inspect each profile/retrieval/reasoning/rendering/state layer, run the foundational scenario suite in batch, compare versioned results, support human review of qualitative judgments, and exercise the integrated local Jac-backend/web path without access to production.
 
 ### Extension-ready
 
-The external-agent extension is ready when the remote MCP transport authenticates the same phone-owned account, exercises the same C4 capability contract as the first-party agent, and returns accepted matches to the canonical Connection Agent web thread.
+The external-agent extension is ready when the remote MCP transport authenticates the same Jac-owned account, exercises the same C4 capability contract as the first-party agent, and returns accepted matches to the canonical Connection Agent web thread.

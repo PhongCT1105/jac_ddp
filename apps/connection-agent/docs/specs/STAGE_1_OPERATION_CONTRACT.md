@@ -157,5 +157,5 @@ frozen surface. It may not change operation semantics. Other branches record a
 contract request in their handoff report and continue against this document.
 
 Editable profile proposals, full revision lifecycle, production identity,
-Supabase persistence, live JacGrid, realtime delivery, and remote transports are
+Durable Jac persistence, live JacGrid, WebSocket delivery, and remote transports are
 Stage 2/3 work and cannot be added during Stage 1.
