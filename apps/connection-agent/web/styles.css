@@ -1,0 +1,22 @@
+:root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #172033; background: #f4f7fb; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, select, textarea { font: inherit; }
+button, select { min-height: 44px; }
+button { border: 0; border-radius: 10px; padding: 10px 14px; background: #174ea6; color: #fff; font-weight: 700; cursor: pointer; }
+button:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
+button:disabled { opacity: .6; cursor: wait; }
+.app { max-width: 760px; margin: auto; padding: 28px 20px 120px; }
+header h1 { margin: 4px 0; font-size: clamp(2rem, 8vw, 3.4rem); }
+header p { color: #46546d; font-size: 1.05rem; }
+.eyebrow { color: #174ea6; font-size: .78rem; font-weight: 800; letter-spacing: .08em; margin: 0 0 6px; }
+.panel, .profile, .card, .match, .thread, .empty { background: #fff; border: 1px solid #cbd5e1; border-radius: 16px; padding: 18px; margin: 16px 0; box-shadow: 0 4px 16px #17203312; }
+.history { display: grid; gap: 14px; margin: 16px 0; }.history .history-item { margin: 0; }.profile-summary { background: #eef4ff; border: 1px solid #a9bfe3; border-radius: 16px; padding: 14px 18px; }.profile-summary p:last-child { margin-bottom: 0; }.card-readonly, .match-readonly { box-shadow: none; }
+.panel { display: grid; gap: 8px; }.panel select { border: 1px solid #64748b; border-radius: 10px; padding: 8px; }.quiet { background: #e8eef9; color: #163c78; }
+.status { min-height: 24px; color: #24456e; }.error { color: #9f1239; font-weight: 700; }
+pre { white-space: pre-wrap; font: inherit; line-height: 1.55; color: #1e293b; }
+.card { border: 2px solid #174ea6; }.card li { margin: 8px 0; color: #27364d; }.actions { display: grid; gap: 10px; margin-top: 16px; }
+.match { background: #edfdf4; border-color: #15803d; }.message { border-left: 4px solid #174ea6; padding: 8px 12px; margin: 10px 0; background: #f8fbff; }.message p { margin: 4px 0; }
+.empty-message { color: #46546d; font-style: italic; }
+.composer { position: sticky; bottom: 0; display: grid; gap: 8px; background: #fff; border-top: 1px solid #cbd5e1; padding: 14px 0; }.composer textarea { min-height: 52px; border: 1px solid #64748b; border-radius: 10px; padding: 10px; }
+@media (max-width: 420px) { .app { padding: 20px 16px 120px; }.panel, .profile, .card, .match, .thread, .empty { border-radius: 12px; padding: 16px; } }

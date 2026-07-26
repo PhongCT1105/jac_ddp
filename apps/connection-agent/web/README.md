@@ -1,5 +1,17 @@
 # Web experience
 
-Reserved for the Product Experience objective: the Jac first-party conversation UI, profile approval, suggestion cards, authentication screens, match transition, and private chat.
+This directory contains the Stage 1 Jac first-party local experience: synthetic
+profile confirmation, viewer-specific suggestions, private interest, reciprocal
+match transition, and a private human-message thread.
 
-The foundation intentionally uses a CLI so UI work can begin later against released application operations and fakes.
+## Local demo
+
+From the repository root, run:
+
+```bash
+./apps/connection-agent/web/start.sh
+```
+
+No credentials or secrets are required. Select Alice, confirm her synthetic
+profile, show Bob, open privately, switch to Bob, open Alice, then open the
+private chat and send a message. Reset restores the fixture state.
