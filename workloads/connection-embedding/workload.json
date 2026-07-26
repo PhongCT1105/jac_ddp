@@ -1,0 +1,23 @@
+{
+  "contract_version": 1,
+  "id": "connection-embedding",
+  "version": "0.1.0",
+  "entrypoint": ["jac", "run", "src/main.jac"],
+  "input_schema": "schemas/input.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "model": {
+    "id": "fixture-token-hash",
+    "revision": "fixture-token-hash-v1",
+    "artifact_sha256": "sha256:d681e8a394df13cc28fb809dc5a1f66f4b66310bb42e259adb9a344d87fcc070"
+  },
+  "resources": {
+    "cpu_seconds": 30,
+    "memory_mb": 256,
+    "wall_seconds": 45,
+    "network": "none"
+  },
+  "verification": {
+    "numeric_tolerance": 0.000001,
+    "normalized": true
+  }
+}

@@ -1,0 +1,25 @@
+[project]
+name = "connection-agent"
+version = "0.1.0"
+description = "Provider-neutral Connection Agent foundation."
+entry-point = "src/main.jac"
+kind = "cli"
+jac-version = ">=0.34.6"
+
+[run]
+diagnostics = "error"
+
+[check]
+enforce_access = true
+
+[check.lint]
+select = ["default"]
+
+[test]
+directory = "tests"
+filter = "*_tests.jac"
+verbose = true
+
+[scripts]
+check = "jac check src tests && jac test -d tests"
+demo = "jac run src/main.jac"
