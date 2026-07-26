@@ -1,0 +1,12 @@
+[project]
+name = "jacgrid-worker"
+version = "0.1.0"
+description = "JacGrid worker runtime: registers, heartbeats, pulls tasks, runs them, returns Contract B result envelopes"
+entry-point = "main.jac"
+kind = "cli"
+
+[dependencies]
+requests = ">=2.28.0"
+
+[dev-dependencies]
+watchdog = ">=3.0.0"

@@ -1,0 +1,14 @@
+[project]
+name = "jacgrid-coordinator"
+version = "0.1.0"
+description = "JacGrid coordinator: job graph, scheduler, failure detection, verification and simulated payments"
+entry-point = "main.sv.jac"
+kind = "api-service"
+
+[serve]
+port = 8000
+
+[dependencies]
+
+[dev-dependencies]
+watchdog = ">=3.0.0"

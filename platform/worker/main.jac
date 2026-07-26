@@ -1,6 +1,9 @@
 """JacGrid worker runtime.
 
-    .venv/bin/jac run worker/agent.jac
+This is its own Jac project (`platform/worker/jac.toml`). From that dir:
+
+    jac run main.jac                                 # join the grid
+    JACGRID_WORKER_SELFTEST=1 jac run main.jac       # offline runner self-test
 
 Registers with the coordinator, then loops: heartbeat every 5s, pull work when
 idle, execute it, post the Contract B result envelope back.
@@ -48,13 +51,23 @@ glob STUB_RUNTIME: str = "stub-runner:v0";
 glob TASK_DELAY: float = float(os.environ.get("JACGRID_TASK_DELAY", "0"));
 glob EMBEDDING_DIM: int = int(os.environ.get("JACGRID_EMBEDDING_DIM", "384"));
 
+# `any` aliases for Python builtins/objects the 0.16 checker cannot resolve:
+# two-arg round() trips E1054, and sys.stdout is typed "TextIO | Any".
+glob PY_ROUND: any = round;
+glob STDOUT: any = sys.stdout;
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+"""Python's two-arg `round`, reached through an `any` alias (see PY_ROUND)."""
+def round_to(value: float, digits: int) -> float {
+    return PY_ROUND(value, digits) as float;
+}
+
 def log(message: str) -> None {
     print("[worker " + WORKER_NAME + "] " + message);
-    sys.stdout.flush();
+    STDOUT.flush();
 }
 
 def iso_now() -> str {
@@ -110,7 +123,7 @@ def call(walker_name: str, body: dict) -> dict {
         reports = data.get("reports", []);
     }
     if isinstance(reports, list) and len(reports) > 0 {
-        return reports[0];
+        return reports[0] as dict;
     }
     return {"error": "empty_report", "detail": json.dumps(body_json)[0:400]};
 }
@@ -125,7 +138,7 @@ def pseudo_embedding(text: str, dim: int) -> list {
     Same text always gives the same vector, so coordinator-side recompute
     verification will work against the stub as well as against a real model.
     """;
-    vector = [];
+    vector: list[float] = [];
     counter = 0;
     seed = text.encode("utf-8");
     while len(vector) < dim {
@@ -134,7 +147,7 @@ def pseudo_embedding(text: str, dim: int) -> list {
             if len(vector) >= dim {
                 break;
             }
-            vector.append(round((float(byte) - 127.5) / 127.5, 6));
+            vector.append(round_to((float(byte as int) - 127.5) / 127.5, 6));
         }
         counter += 1;
     }
@@ -146,9 +159,9 @@ def pseudo_embedding(text: str, dim: int) -> list {
     if norm == 0.0 {
         return vector;
     }
-    normed = [];
+    normed: list[float] = [];
     for value in vector {
-        normed.append(round(value / norm, 6));
+        normed.append(round_to(value / norm, 6));
     }
     return normed;
 }
@@ -208,7 +221,7 @@ def run_task(envelope: dict) -> dict {
     if outcome["status"] != "ok" {
         exit_code = 1;
     }
-    cpu_seconds = round(time.process_time() - started_cpu, 4);
+    cpu_seconds = round_to(time.process_time() - started_cpu, 4);
     return {
         "task_id": envelope.get("task_id", ""),
         "status": outcome["status"],
@@ -219,7 +232,7 @@ def run_task(envelope: dict) -> dict {
             "finished_at": iso_now(),
             "peak_memory_mb": 0,
             "cpu_seconds": cpu_seconds,
-            "wall_seconds": round(time.time() - started_wall, 4),
+            "wall_seconds": round_to(time.time() - started_wall, 4),
             "exit_code": exit_code
         },
         "error": outcome["error"]
@@ -239,7 +252,7 @@ def register() -> str {
             "capabilities": capabilities()
         });
         if "worker_id" in reply {
-            log("registered as " + reply["worker_id"] + " on device " + str(reply.get("hostname", "")));
+            log("registered as " + str(reply["worker_id"]) + " on device " + str(reply.get("hostname", "")));
             return str(reply["worker_id"]);
         }
         log("registration failed: " + json.dumps(reply)[0:200] + " — retrying in 2s");
@@ -260,8 +273,9 @@ def send_heartbeat(worker_id: str, state: str, task_id: str) -> None {
 
 def handle_task(worker_id: str, envelope: dict) -> None {
     task_id = str(envelope.get("task_id", ""));
+    item_count = len((envelope.get("payload", {}) as dict).get("items", []) as list);
     log("running task " + task_id + " (" + str(envelope.get("job_type", "")) + ", "
-        + str(len(envelope.get("payload", {}).get("items", []))) + " items)");
+        + str(item_count) + " items)");
     send_heartbeat(worker_id, "busy", task_id);
     result_envelope = run_task(envelope);
     reply = call("submit_result", {"task_id": task_id, "result_envelope": result_envelope});
@@ -312,7 +326,7 @@ def loop(worker_id: str) -> None {
             continue;
         }
         idle_polls = 0;
-        handle_task(worker_id, envelope);
+        handle_task(worker_id, envelope as dict);
         send_heartbeat(worker_id, "idle", "");
         last_beat = time.time();
     }
@@ -335,13 +349,13 @@ with entry {
                 "limits": {}};
         out2 = run_task(env2);
         assert out2["status"] == "ok", "embedding stub failed";
-        vec = out2["output"]["results"][0]["embedding"];
+        vec = out2["output"]["results"][0]["embedding"] as list;
         assert len(vec) == EMBEDDING_DIM, "embedding dim mismatch";
         assert vec == run_task(env2)["output"]["results"][0]["embedding"], "embedding not deterministic";
         env3 = {"task_id": "t-selftest-3", "job_type": "mystery", "payload": {}, "limits": {}};
         out3 = run_task(env3);
         assert out3["status"] == "error", "unknown job_type should error";
-        print("[worker selftest] OK dim=" + str(len(vec)) + " runtime=" + out["execution"]["runtime"]);
+        print("[worker selftest] OK dim=" + str(len(vec)) + " runtime=" + str(out["execution"]["runtime"]));
     } else {
         log("coordinator=" + COORDINATOR + " job_types=" + json.dumps(job_types()));
         wid = register();

@@ -1,7 +1,10 @@
 """JacGrid coordinator — walkers (the HTTP surface).
 
-Run locally:      .venv/bin/jac run   coordinator/main.jac    (self-test with JACGRID_SELFTEST=1)
-Serve REST:       .venv/bin/jac start coordinator/main.jac --no_client   (needs a jac.toml in cwd)
+This is its own Jac project (`platform/coordinator/jac.toml`). From that dir:
+
+Self-test:  JACGRID_SELFTEST=1 jac run main.sv.jac
+Serve REST: jac start main.sv.jac --no_client --port 8000
+Check:      jac check .
 
 HOW THE GRAPH IS SHARED WHEN SERVED (jaclang 0.16 / jac-scale)
 --------------------------------------------------------------
@@ -31,7 +34,7 @@ Contracts: docs/architecture.md §4 (Contract A: create_job/get_job/
 get_job_result) and §5 (Contract B: next_task/submit_result envelopes).
 """
 
-include model;
+include src.model;
 
 def auth_ok(secret: str) -> bool {
     return secret == API_KEY;

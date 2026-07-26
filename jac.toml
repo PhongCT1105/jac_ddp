@@ -1,5 +1,0 @@
-[project]
-name = "jacgrid"
-version = "0.1.0"
-description = "JacGrid — distributed job grid on jaclang (coordinator + workers)"
-entry-point = "coordinator/main.jac"
