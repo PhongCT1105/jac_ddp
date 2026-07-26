@@ -74,13 +74,21 @@ obj CardSnapshot {
         reasons: list[str];
 }
 
+obj EmbeddingRetrievalEvidence {
+    has embedding_states: list[str],
+        submitted_item_count: int,
+        recombined_result_count: int,
+        eligible_candidate_count: int;
+}
+
 obj Suggestion {
     has suggestion_id: str,
         pair_id: str,
         viewer_id: str,
         subject_id: str,
         card: CardSnapshot,
-        state: str;
+        state: str,
+        embedding_evidence: EmbeddingRetrievalEvidence | None = None;
 }
 
 obj InterestDecision {
@@ -112,6 +120,16 @@ obj MessageRecord {
         sender_id: str,
         body: str,
         idempotency_key: str;
+}
+
+obj InterestResult {
+    has decision: InterestDecision,
+        match: MatchRecord | None;
+}
+
+obj ThreadView {
+    has thread: ThreadRecord,
+        messages: list[MessageRecord];
 }
 
 obj AppError {

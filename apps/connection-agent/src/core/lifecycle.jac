@@ -25,13 +25,18 @@ def decision_lookup_key(viewer_id: str, pair_id: str) -> str {
 
 
 def record_interest(
-    state: InMemoryLifecycle, suggestion: Suggestion, kind: str, idempotency_key: str,
+    state: InMemoryLifecycle,
+    suggestion: Suggestion,
+    kind: str,
+    idempotency_key: str,
+    idempotency_scope: str = "",
 ) -> MatchRecord | None {
     if kind not in ["open", "pass"] {
         raise ValueError("invalid_interest_kind");
     }
-    if idempotency_key in state.decisions_by_key {
-        prior_decision: InterestDecision = state.decisions_by_key[idempotency_key];
+    storage_key: str = idempotency_scope + idempotency_key;
+    if storage_key in state.decisions_by_key {
+        prior_decision: InterestDecision = state.decisions_by_key[storage_key];
         if prior_decision.pair_id != suggestion.pair_id
         or prior_decision.viewer_id != suggestion.viewer_id
         or prior_decision.subject_id != suggestion.subject_id
@@ -56,7 +61,7 @@ def record_interest(
         kind=kind,
         idempotency_key=idempotency_key,
     );
-    state.decisions_by_key[idempotency_key] = decision;
+    state.decisions_by_key[storage_key] = decision;
     state.decisions_by_viewer_pair[viewer_pair_key] = decision;
 
     if kind != "open" {
@@ -98,9 +103,11 @@ def send_message(
     sender_id: str,
     body: str,
     idempotency_key: str,
+    idempotency_scope: str = "",
 ) -> MessageRecord {
-    if idempotency_key in state.messages_by_key {
-        prior_message: MessageRecord = state.messages_by_key[idempotency_key];
+    storage_key: str = idempotency_scope + idempotency_key;
+    if storage_key in state.messages_by_key {
+        prior_message: MessageRecord = state.messages_by_key[storage_key];
         if prior_message.thread_id != thread_id
         or prior_message.sender_id != sender_id
         or prior_message.body != body {
@@ -126,7 +133,7 @@ def send_message(
         idempotency_key=idempotency_key,
     );
     state.messages_by_thread[thread_id].append(message);
-    state.messages_by_key[idempotency_key] = message;
+    state.messages_by_key[storage_key] = message;
     return message;
 }
 
