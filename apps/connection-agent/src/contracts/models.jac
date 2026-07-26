@@ -114,6 +114,16 @@ obj MessageRecord {
         idempotency_key: str;
 }
 
+obj InterestResult {
+    has decision: InterestDecision,
+        match: MatchRecord | None;
+}
+
+obj ThreadView {
+    has thread: ThreadRecord,
+        messages: list[MessageRecord];
+}
+
 obj AppError {
     has code: str,
         message: str,
