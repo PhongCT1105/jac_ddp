@@ -48,7 +48,7 @@ gave a Jac 0.34.6 **ready** design verdict after MCP guidance review.
 `/root/spec_arch_review` identified scoped idempotency, immutable retry results,
 safe thread non-disclosure, and lifecycle validation requirements; all were
 implemented before code review. `/root/implementation_arch_review` found the
-runtime implementation ready and required this report/evidence. 
+runtime implementation ready and required this report/evidence.
 `/root/implementation_jac_review` verified Jac-native source and requested a
 behavioral compute boundary; Core now calls `FixtureComputeBoundary.embed`.
 Evaluation follow-up review by `/root/evaluation_contract_review` was ready;
