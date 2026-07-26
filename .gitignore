@@ -1,20 +1,87 @@
-# Local configuration and secrets
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment and local secrets
 .env
 .env.*
 !.env.example
+!.env.sample
+
+# Python cache/build artifacts
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Jac local runtime state
+.jac/
+**/.jac/cache/
+**/.jac/data/
+**/.jac/logs/
+
+# Large local data and experiment outputs
+data/
+dataset/
+datasets/
+artifacts/
+outputs/
+results/
+models/
+checkpoints/
+logs/
+tmp/
+temp/
+
+# Common large file formats
+*.parquet
+*.feather
+*.arrow
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.bin
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.bz2
+*.xz
+*.7z
+
+# Sandbox per-task scratch workdirs (created + wiped by sandbox/runner/harness.jac)
+sandbox/work/*
+!sandbox/work/.gitkeep
+
+# Editor / OS noise
+*.swo
+.superpowers/
+__jac_gen__/
+*.session
+
+# Secrets / keys
 *.pem
 *.key
 
-# Jac, Python, and JavaScript build state
-.jac/
-__pycache__/
-*.py[cod]
-.pytest_cache/
+# JavaScript build state
 node_modules/
-dist/
-build/
 coverage/
-.coverage
 
 # Local service and model state
 .supabase/
@@ -22,7 +89,7 @@ supabase/.temp/
 .cache/
 *.log
 
-# Editor and operating-system files
+# Editor / OS noise
 .DS_Store
 .idea/
 .vscode/

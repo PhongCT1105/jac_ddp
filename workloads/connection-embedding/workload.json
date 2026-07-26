@@ -1,23 +1,116 @@
 {
-  "contract_version": 1,
-  "id": "connection-embedding",
-  "version": "0.1.0",
-  "entrypoint": ["jac", "run", "src/main.jac"],
-  "input_schema": "schemas/input.schema.json",
-  "output_schema": "schemas/output.schema.json",
+  "name": "connection-embedding",
+  "version": "1.0.0",
+  "entrypoint": "src/embed.jac",
+  "owner": "connection-agent app team (docs/workload-ownership-decision.md)",
+  "job_type": "embedding",
+  "runtime": "jac",
+  "runtime_tags": [
+    "connection-embedding:1.0.0",
+    "connection-embedding-fallback:1.0.0"
+  ],
+
+  "invocation": {
+    "convention": "file-io",
+    "description": "Caller sets JACGRID_WORKDIR to a directory containing task.json (Contract B task envelope) and runs `jac run src/embed.jac`. Per docs/luke-sandbox/spec.md §3: on success the entrypoint writes application output plus reserved __jacgrid_execution.runtime to result.json and exits 0; the generic sandbox validates that tag against this immutable manifest's runtime_tags, promotes it into execution.runtime, strips the reserved object, and wraps the application output into the full Contract B result envelope. On any failure, result.json is NOT written, an error is printed, and the process exits non-zero — the sandbox's own 'runner exits non-zero / bad output -> error' path builds the error envelope from that.",
+    "env": {"JACGRID_WORKDIR": "absolute path to a writable scratch directory"},
+    "on_success": "result.json = {\"results\": [{\"id\": ..., \"embedding\": [...]}], \"__jacgrid_execution\": {\"runtime\": \"connection-embedding:1.0.0|connection-embedding-fallback:1.0.0\"}}, exit 0. The generic sandbox validates the reserved runtime against this manifest's runtime_tags, promotes it into Contract B execution.runtime, and removes it before returning application output.",
+    "on_failure": "result.json NOT written, stderr has a human-readable message, exit code != 0"
+  },
+
   "model": {
-    "id": "fixture-token-hash",
-    "revision": "fixture-token-hash-v1",
-    "artifact_sha256": "sha256:d681e8a394df13cc28fb809dc5a1f66f4b66310bb42e259adb9a344d87fcc070"
+    "name": "all-MiniLM-L6-v2",
+    "family": "sentence-transformers",
+    "hf_repo": "sentence-transformers/all-MiniLM-L6-v2",
+    "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+    "artifact_hash": "sha256:53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db",
+    "artifact_hash_of": "model.safetensors in the pinned revision's snapshot (the primary weight file; the full snapshot is pinned via `revision`, which is what src/embed.jac actually passes to SentenceTransformer(..., revision=...))",
+    "embedding_dim": 384,
+    "normalization": "L2 (normalize_embeddings=True at encode time)",
+    "precision": "float32, cast to Python float before serialization"
   },
-  "resources": {
-    "cpu_seconds": 30,
-    "memory_mb": 256,
-    "wall_seconds": 45,
-    "network": "none"
+
+  "dependencies": {
+    "sentence-transformers": "5.6.1",
+    "torch": "2.13.0",
+    "numpy": "2.5.1",
+    "python": "3.12"
   },
+
+  "runtime_versions": {
+    "primary": "connection-embedding:1.0.0",
+    "fallback": "connection-embedding-fallback:1.0.0",
+    "fallback_trigger": "sentence-transformers import failure, model load failure, or any exception during encode() — the workload always produces contract-shaped `results`, whichever path ran.",
+    "fallback_scheme": "deterministic seeded SHA-256 bag-of-words hash, L2-normalized, 384-d (same dimensionality as the primary model so downstream consumers never branch on it)",
+    "visibility": "the on-disk result.json carries the actual tag only in reserved `__jacgrid_execution.runtime`. The generic sandbox accepts it only when it appears in this manifest's runtime_tags, promotes it to Contract B execution.runtime, and removes the reserved field before exposing application output. Workloads cannot claim arbitrary runtimes."
+  },
+
+  "input_schema": {
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "text": {"type": "string"}
+        },
+        "required": ["id", "text"]
+      }
+    },
+    "model": {"type": "string", "description": "informational only — this workload always runs its own pinned model/revision"}
+  },
+
+  "output_schema": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "embedding": {"type": "array", "items": {"type": "number"}, "minItems": 384, "maxItems": 384}
+        },
+        "required": ["id", "embedding"]
+      }
+    }
+  },
+
+  "on_failure_contract": {
+    "description": "On failure this workload writes NO result.json at all and exits non-zero (stderr carries the reason) — it does not attempt to construct any part of the Contract B envelope. See docs/luke-sandbox/spec.md §3's Failure mapping table for how the sandbox turns that into a result envelope.",
+    "run_task_error_codes": ["unsupported_job_type", "empty_items", "invalid_item", "exception"]
+  },
+
+  "resource_requirements": {
+    "cpu_seconds": 120,
+    "memory_mb": 2048,
+    "wall_seconds": 180,
+    "network": "none",
+    "notes": "matches docs/architecture.md §5's example task-envelope limits; measured actual usage on the reference fixture (3 items) was ~500MB peak RSS / ~2.6 cpu_seconds on the primary model path on this dev machine."
+  },
+
   "verification": {
-    "numeric_tolerance": 0.000001,
-    "normalized": true
+    "tolerance": 0.001,
+    "method": "recompute_sample",
+    "sample_rate": 0.1,
+    "tolerance_metric": "cosine_similarity_min",
+    "tolerance_threshold": 0.999,
+    "tolerance_rationale": "the pinned model + normalize_embeddings=True is deterministic per-machine, but float32 BLAS reductions can differ in the last few bits across CPU/GPU backends (MPS vs CPU vs different worker hardware); 0.999 cosine similarity (equivalently, ~0.001 max per-pair distance, matching the flat `tolerance` field above) comfortably separates 'same embedding, different hardware' from 'wrong embedding'. Exact bit-for-bit equality is NOT the bar.",
+    "runtime_mismatch_policy": "if a recompute lands on the fallback runtime while the original ran on the primary model (or vice versa), verification MUST fail regardless of similarity score — the two schemes are not expected to agree."
+  },
+
+  "fixtures": {
+    "task_embedding_3profiles": {
+      "task": "tests/fixtures/task-embedding.json",
+      "expected_primary": "tests/fixtures/expected-model.json",
+      "expected_fallback": "tests/fixtures/expected-fallback.json",
+      "expected_embedding_length": 384,
+      "description": "3 short bio-style texts. expected_primary was generated once by running this exact entrypoint against the pinned model/revision offline; expected_fallback is independently computed in Python from the same hash formula as _hash_embed and must match exactly (deterministic, no model involved)."
+    },
+    "task_bad_job_type": {
+      "task": "tests/fixtures/task-bad-job-type.json",
+      "expected_status": "error",
+      "expected_error_code": "unsupported_job_type",
+      "description": "job_type outside this workload's allowlist must fail fast (non-zero exit, no result.json), not raise or hang."
+    }
   }
 }

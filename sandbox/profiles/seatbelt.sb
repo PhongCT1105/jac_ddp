@@ -1,0 +1,44 @@
+;; JacGrid sandbox — macOS Seatbelt (sandbox-exec) profile.
+;;
+;; Enabled per-run via JACGRID_SEATBELT=1 (see runner/harness.jac). The
+;; unconditional guarantee this profile exists to give is `(deny network*)`
+;; — a workload physically cannot phone home. On top of that it write-jails
+;; the workload to its own task workdir: everything outside `(param
+;; "WORKDIR")` is read-only from the workload's point of view.
+;;
+;; Invoked as:
+;;   sandbox-exec -D WORKDIR=<realpath of the task workdir> \
+;;                -f sandbox/profiles/seatbelt.sb <jac_bin> run <entrypoint>
+;;
+;; --- Why this isn't a deny-default file jail (spec's R2 sketch) --------
+;; docs/luke-sandbox/spec.md §2 sketches `(deny default)` + narrow
+;; `(allow file-read* (subpath ...))` for the runtime + workdir. That was
+;; tried first and verified BROKEN on this machine (macOS 26.5.1 /
+;; 25F80): the instant a profile adds ANY `(subpath ...)` / `(literal
+;; ...)` filter — even just `(allow file-read* (subpath "/usr/lib"))`
+;; alongside `(deny default)` — dyld itself aborts before the target
+;; binary's first instruction (SIGABRT in `dyld4::CacheFinder`, confirmed
+;; via /Library/Logs/DiagnosticReports/echo-*.ips: it can't locate the
+;; dyld shared cache under a deny-default policy). This reproduces for
+;; `/bin/echo`, not just Jac — it's a platform incompatibility between
+;; classic deny-default Seatbelt profiles and this OS build's dyld
+;; bootstrap, not a bug in the workload or the path list above.
+;;
+;; Per spec §7's own risk mitigation ("if stuck, ship R1 + `deny
+;; network*` only"), this profile instead starts from `(allow default)`
+;; (which lets dyld initialize normally, verified working) and LAYERS two
+;; targeted denials on top: network, and writes outside the workdir. Both
+;; are independently verified below to actually take effect — this is
+;; real OS-enforced confinement, just scoped narrower (write, not read)
+;; than the spec's original sketch. See sandbox/README.md "Seatbelt
+;; profile" for the verification transcript and the read-jail follow-up
+;; if a less locked-down macOS/dyld combination is available later.
+
+(version 1)
+(allow default)
+
+;; the headline guarantee: no network access, full stop
+(deny network*)
+
+;; write-jail: only the task's own workdir may be written to
+(deny file-write* (require-not (subpath (param "WORKDIR"))))

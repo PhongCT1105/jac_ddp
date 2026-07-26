@@ -1,0 +1,6 @@
+{
+  "task_id": "t-hang-1",
+  "job_type": "noop",
+  "payload": {"mode": "hang"},
+  "limits": {"cpu_seconds": 30, "memory_mb": 512, "wall_seconds": 2, "network": "none"}
+}

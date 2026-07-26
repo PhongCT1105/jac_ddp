@@ -1,0 +1,13 @@
+{
+  "task_id": "t-fixture-1",
+  "job_type": "embedding",
+  "payload": {
+    "model": "all-MiniLM-L6-v2",
+    "items": [
+      {"id": "profile-001", "text": "ML engineer who loves climbing and building recommendation systems"},
+      {"id": "profile-002", "text": "Designer into generative art and Figma plugin building"},
+      {"id": "profile-003", "text": "Backend engineer, distributed systems nerd, coffee snob"}
+    ]
+  },
+  "limits": {"cpu_seconds": 120, "memory_mb": 2048, "wall_seconds": 180, "network": "none"}
+}

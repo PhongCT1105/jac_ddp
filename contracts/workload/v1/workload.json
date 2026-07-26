@@ -1,0 +1,61 @@
+{
+  "name": "connection-embedding",
+  "version": "1.0.0",
+  "entrypoint": "src/embed.jac",
+  "model": {
+    "name": "all-MiniLM-L6-v2",
+    "artifact_hash": "sha256:abc123def456..."
+  },
+  "dependencies": {
+    "sentence-transformers": "2.2.2",
+    "torch": "2.0.1",
+    "numpy": "1.24.0"
+  },
+  "input_schema": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "text": {"type": "string"}
+        },
+        "required": ["id", "text"]
+      }
+    },
+    "model": {"type": "string"}
+  },
+  "output_schema": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "embedding": {
+            "type": "array",
+            "items": {"type": "number"}
+          }
+        },
+        "required": ["id", "embedding"]
+      }
+    }
+  },
+  "resource_requirements": {
+    "cpu_seconds": 120,
+    "memory_mb": 2048,
+    "wall_seconds": 180
+  },
+  "verification": {
+    "tolerance": 0.001
+  },
+  "fixtures": {
+    "test_profile_001": {
+      "input": {
+        "model": "all-MiniLM-L6-v2",
+        "items": [{"id": "profile-001", "text": "ML engineer who loves climbing..."}]
+      },
+      "expected_embedding_length": 384
+    }
+  }
+}

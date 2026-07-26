@@ -185,7 +185,15 @@ Optional for the demo, nice to have: `POST /api/jobs/{job_id}/webhook` for push 
     "model": "all-MiniLM-L6-v2",
     "items": [{"id": "profile-026", "text": "..."}]
   },
-  "limits": {"cpu_seconds": 120, "memory_mb": 2048, "wall_seconds": 180, "network": "none"}
+  "limits": {"cpu_seconds": 120, "memory_mb": 2048, "wall_seconds": 180, "network": "none"},
+  "workload": {
+    "id": "connection-embedding",
+    "version": "1.0.0",
+    "manifest_sha256": "sha256:...",
+    "package_sha256": "sha256:...",
+    "runtime_tags": ["connection-embedding:1.0.0", "connection-embedding-fallback:1.0.0"],
+    "verification": {"tolerance": 0.001}
+  }
 }
 ```
 
@@ -212,7 +220,17 @@ Rules:
 
 - The sandbox never talks to the coordinator; only the worker runtime does.
 - The sandbox only runs allowlisted `job_type`s. Unknown types return `status: "error"` immediately.
+- Job creation freezes workload ID, version, manifest digest, executable
+  package digest, runtime tags, and verification policy into every task.
+  `package_sha256` covers the raw manifest and resolved entrypoint bytes plus
+  any explicit manifest `local_artifacts` (never an external model cache).
+  The sandbox rejects a task if that pinned package no longer matches.
 - The `execution` block is mandatory — it feeds the Sandbox and Attempt nodes in the Jac graph and the audit timeline.
+- A file-I/O workload may report its actual implementation path through
+  reserved `__jacgrid_execution.runtime`. The sandbox promotes it only when
+  the immutable Contract C manifest declares the tag in `runtime_tags`, and
+  strips the reserved field before exposing `output`. Missing metadata keeps
+  the manifest's default `name:version` runtime.
 
 ---
 

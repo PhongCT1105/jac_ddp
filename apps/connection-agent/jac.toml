@@ -1,25 +1,15 @@
 [project]
 name = "connection-agent"
 version = "0.1.0"
-description = "Provider-neutral Connection Agent foundation."
-entry-point = "src/main.jac"
-kind = "cli"
-jac-version = ">=0.34.6"
+description = "The matching application — JacGrid's first product. Profile pool, job client (Mock/Live JacGrid), and cosine match engine."
+entry-point = "main.sv.jac"
+kind = "api-service"
 
-[run]
-diagnostics = "error"
-
-[check]
-enforce_access = true
-
-[check.lint]
-select = ["default"]
+[dependencies]
+requests = "~=2.32"
 
 [test]
-directory = "tests"
-filter = "*_tests.jac"
-verbose = true
+directory = "."
 
-[scripts]
-check = "jac check src tests && jac test -d tests"
-demo = "jac run src/main.jac"
+[serve]
+port = 8080

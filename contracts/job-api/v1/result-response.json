@@ -1,0 +1,13 @@
+{
+  "job_id": "job-001",
+  "results": [
+    {"id": "profile-001", "embedding": [0.013, -0.221]},
+    {"id": "profile-002", "embedding": [0.157, 0.043]}
+  ],
+  "receipt": {
+    "tasks": 4,
+    "verified": 4,
+    "total_paid": 0.40,
+    "payments": [{"task_id": "t-1", "worker": "mac2", "amount": 0.10, "tx": "0xabc..."}]
+  }
+}

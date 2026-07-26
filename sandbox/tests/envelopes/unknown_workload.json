@@ -1,0 +1,6 @@
+{
+  "task_id": "t-unknown-1",
+  "job_type": "training_shard",
+  "payload": {"dataset": "shard-07"},
+  "limits": {"cpu_seconds": 20, "memory_mb": 256, "wall_seconds": 10, "network": "none"}
+}

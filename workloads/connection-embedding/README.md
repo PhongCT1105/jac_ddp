@@ -1,18 +1,118 @@
 # connection-embedding
 
-This is the versioned computation supplied by Connection Agent and executed through local, JacGrid, or future compatible compute adapters.
+The versioned embedding workload supplied by the connection-agent app team
+(Contract C, `docs/architecture.md` §6 and `docs/workload-ownership-decision.md`).
+This package owns the ONE embedding algorithm in JacGrid — the coordinator
+schedules and verifies it, the sandbox installs and invokes it, neither
+reimplements it.
 
-Version `0.1.0` is a deterministic, dependency-free fixture model for the foundation walking skeleton. It proves packaging, schemas, invocation, completeness, normalization, and provider parity. The Intelligence and Workload objective will release a new version with the selected production embedding model; it must not silently change `0.1.0`.
+## What it does
 
-## Run locally
+Turns `{"id": ..., "text": ...}` items into 384-dimensional embedding
+vectors using `sentence-transformers/all-MiniLM-L6-v2`, pinned to revision
+`1110a243fdf4706b3f48f1d95db1a4f5529b4d41` (already cached locally — see
+`jac-baseline.md`). If the model import or load fails for any reason, it
+falls back to a deterministic seeded-hash scheme so a task still completes
+with contract-shaped output — reported under a **different** runtime tag
+(`connection-embedding-fallback:1.0.0` vs `connection-embedding:1.0.0`) so
+the coordinator/verifier can tell which path actually ran.
 
-From this directory:
+## Invocation contract
+
+Mirrors the file-I/O convention already used by the noop fixture and follows
+`docs/luke-sandbox/spec.md` §3: the runner writes application output plus one
+reserved workload-to-sandbox metadata object; the sandbox is what wraps it
+into the full Contract B result envelope. This workload does not construct
+`task_id`/`status`/`execution`/`error` on disk.
+
+1. Caller creates a scratch directory and writes a Contract B task envelope
+   (`docs/architecture.md` §5) to `<workdir>/task.json`.
+2. Caller sets `JACGRID_WORKDIR=<workdir>` and runs `jac run src/embed.jac`.
+3. **On success:** entrypoint writes
+   `{"results": [...], "__jacgrid_execution": {"runtime": "..."}}` to
+   `<workdir>/result.json`, exits 0. The generic sandbox accepts the runtime
+   only if this immutable manifest declares it in `runtime_tags`, promotes it
+   to Contract B `execution.runtime`, and removes the reserved object before
+   returning application output.
+4. **On failure:** entrypoint writes NOTHING to `result.json`, prints a
+   human-readable reason to stderr, exits non-zero. The sandbox's own
+   "runner exits non-zero / bad output → `status: error`" path (spec §3's
+   Failure mapping table) is what builds the error envelope — this
+   workload never fakes one.
 
 ```bash
-printf '%s\n' '{"contract_version":1,"items":[{"id":"profile_revision_01","text":"builder climbing distributed systems"}]}' | jac run src/main.jac
-jac test -d tests
+mkdir -p /tmp/work
+cat > /tmp/work/task.json <<'EOF'
+{"task_id": "t-1", "job_type": "embedding",
+ "payload": {"model": "all-MiniLM-L6-v2",
+             "items": [{"id": "profile-001", "text": "ML engineer who loves climbing"}]}}
+EOF
+JACGRID_WORKDIR=/tmp/work ../../.venv/bin/jac run src/embed.jac
+cat /tmp/work/result.json   # {"results": [...], "__jacgrid_execution": {"runtime": "..."}}
 ```
 
-The command accepts one JSON document on standard input and writes one JSON document on standard output. Logs, if later added, belong on standard error and must not contain profile text or vectors by default.
+The entrypoint forces `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` itself
+(task `limits.network` is always `"none"` — see `workload.json`), so it
+never phones home even if the sandbox doesn't set those env vars.
 
-The package contains no application persistence, worker scheduling, payment, candidate ranking, pair assessment, consent, match, thread, message, or UI logic.
+`run_task(task: dict) -> dict` in `src/embed.jac` is the pure, file-I/O-free
+core and still returns the FULL internal envelope shape (`task_id`,
+`status`, `output`, `execution`, `error`) — that's what the 7 tests below
+exercise directly, and what any future in-process caller (recompute-sample
+verification) should call instead of shelling out. The
+`with entry:__main__` block is the only place that narrows `run_task`'s
+result down to the on-disk contract described above.
+
+The primary-vs-fallback distinction survives the file-I/O boundary in
+`__jacgrid_execution.runtime`. The sandbox validates it against this
+manifest's `runtime_tags`, promotes it, and strips the reserved object. A
+workload cannot spoof an arbitrary runtime, and reserved metadata never
+reaches result consumers.
+
+## Manifest
+
+`workload.json` is the Contract C manifest: entrypoint, pinned model
+revision, locked dependency versions, input/output JSON Schemas, resource
+requirements (matches the architecture doc's example task-envelope limits),
+verification tolerance (`cosine_similarity_min >= 0.999` — real-model
+embeddings are deterministic per machine but float32 BLAS reductions can
+differ in the last few bits across CPU/GPU backends, so bit-exact equality
+is not the bar), and fixture references.
+
+## Tests
+
+```bash
+../../.venv/bin/jac test src/embed.jac -v
+```
+
+7 tests, all pure-function (no file I/O, no coordinator, no sandbox):
+
+- Fallback hash embeddings match an independently-computed golden fixture
+  exactly (cosine > 0.999999) — proves the deterministic scheme really is
+  deterministic.
+- Bad `job_type`, empty `items`, and malformed items all return
+  Contract-B-shaped `status: "error"` results instead of raising.
+- A full 3-item task produces a contract-shaped `status: "ok"` envelope
+  with 384-d embeddings and a complete `execution` block.
+- The file-output adapter carries actual runtime provenance only in the
+  reserved workload-to-sandbox metadata object.
+- If the primary model path ran, its output matches a golden fixture
+  (generated once via this exact entrypoint against the pinned
+  model/revision) within the declared verification tolerance.
+
+Fixtures live in `tests/fixtures/`:
+
+- `task-embedding.json` — 3 short bio-style texts (Contract B task envelope).
+- `expected-fallback.json` — golden output of the hash fallback scheme,
+  computed independently in plain Python from the same formula as
+  `_hash_embed`.
+- `expected-model.json` — golden output of the pinned real model, captured
+  once by actually running this entrypoint offline.
+- `task-bad-job-type.json` — an unsupported `job_type` for the error-path test.
+
+## Dependencies
+
+`sentence-transformers` 5.6.1 / `torch` 2.13.0 / `numpy` 2.5.1 / Python 3.12
+— all already present in the repo's shared `.venv` (see `jac-baseline.md`);
+this project's `jac.toml` declares them for documentation, `jac install`
+was not run against the shared venv to avoid disturbing it.
