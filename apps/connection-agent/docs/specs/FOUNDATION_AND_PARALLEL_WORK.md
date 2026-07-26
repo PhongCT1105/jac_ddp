@@ -1,6 +1,6 @@
 # Spec: Connection Agent Foundation and Parallel Work
 
-**Status:** Proposed for team review
+**Status:** Complete — ready for parallel objective work
 
 **Owner:** Sebastian / Connection Agent workstream
 
@@ -224,3 +224,12 @@ The parallel foundation is ready when:
 ## 11. Out of scope
 
 This foundation does not implement or prescribe coordinator scheduling, JacGrid task graphs, worker registration, worker heartbeats, retries inside the platform, payment, reputation, dashboard behavior, sandbox isolation, allowlist storage, resource enforcement, or the task protocol between Phong and Luke/Santhos.
+
+## 12. Completion record
+
+- F0: our directory structure, copied product documents, safe configuration, READMEs, and setup command are present.
+- F1: `INTERNAL_CONTRACT_V1.md` and typed Jac objects release the internal product contract.
+- F2: 31 synthetic profiles, in-memory lifecycle state, deterministic fixtures, and `MockJacGrid` are implemented.
+- F3: the mock demo ranks 30 eligible candidates after four workload chunks, preserves private one-sided interest, creates one reciprocal match/thread, and appends one authorized idempotent message.
+- F4: `./apps/connection-agent/scripts/check.sh` runs formatting, type checks, 13 Jac tests, boundary-import checks, and the complete walking skeleton.
+- Five session packets and an isolated-worktree launch procedure are published under `docs/objectives/` and `docs/SESSION_LAUNCH.md`.

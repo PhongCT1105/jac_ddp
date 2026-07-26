@@ -1,0 +1,18 @@
+[project]
+name = "connection-embedding"
+version = "0.1.0"
+description = "Deterministic foundation embedding workload owned by Connection Agent."
+entry-point = "src/main.jac"
+kind = "cli"
+jac-version = ">=0.34.6"
+
+[run]
+diagnostics = "error"
+
+[check]
+enforce_access = true
+
+[test]
+directory = "tests"
+filter = "*_tests.jac"
+verbose = true

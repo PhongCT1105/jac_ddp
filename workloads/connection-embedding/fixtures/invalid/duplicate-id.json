@@ -1,0 +1,10 @@
+{
+  "expected_error": "duplicate_item_id",
+  "input": {
+    "contract_version": 1,
+    "items": [
+      {"id": "duplicate", "text": "first"},
+      {"id": "duplicate", "text": "second"}
+    ]
+  }
+}

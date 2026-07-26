@@ -1,6 +1,6 @@
 # Proposal: Connection Agent ↔ JacGrid Boundary Contracts
 
-**Status:** Proposed for agreement before implementation
+**Status:** Accepted by the team
 
 **Participants:** Sebastian, Phong, Luke/Santhos
 
@@ -61,7 +61,7 @@ Earlier proposal: JacGrid ranks candidates
 Accepted direction: JacGrid returns verified embeddings; Connection Agent ranks candidates
 ```
 
-If this proposal is accepted, it is authoritative for the first Connection Agent workload and supersedes only the ranking-workload request/result examples in that earlier proposal. The earlier file is preserved as team history and is not renamed or rewritten by this proposal.
+This accepted document is authoritative for the first Connection Agent workload and supersedes only the ranking-workload request/result examples in that earlier proposal. The earlier file is preserved as team history and is not renamed or rewritten by this decision.
 
 ## 4. Boundary A: Connection Agent to JacGrid
 
