@@ -4,6 +4,13 @@ import os;
 import tempfile;
 import from src.contracts.models { EmbeddingItem }
 import from src.stage15.corpus { DemoCorpus, load_demo_corpus }
+import from src.stage15.explainer {
+    ExplanationCandidate,
+    MatchExplainer,
+    MatchExplanation,
+    MatchExplanationResult,
+    RecordedMatchExplainer
+}
 import from src.stage15.profile_match {
     ProfileMatchResponse,
     VISITOR_ITEM_ID,
@@ -126,6 +133,65 @@ obj InvalidResultProvider(EmbeddingProvider) {
 }
 
 
+obj CapturingRecordedExplainer(MatchExplainer) {
+    has call_count: int = 0,
+        visitor_name: str = "",
+        visitor_profile: str = "",
+        candidates: list[ExplanationCandidate] = [];
+
+    override def explain(
+        visitor_name: str, visitor_profile: str, candidates: list[ExplanationCandidate],
+    ) -> MatchExplanationResult {
+        self.call_count += 1;
+        self.visitor_name = visitor_name;
+        self.visitor_profile = visitor_profile;
+        self.candidates = candidates;
+        return RecordedMatchExplainer().explain(
+            visitor_name, visitor_profile, candidates
+        );
+    }
+}
+
+
+obj InvalidExplanationExplainer(MatchExplainer) {
+    has failure_mode: str;
+
+    override def explain(
+        _visitor_name: str,
+        _visitor_profile: str,
+        candidates: list[ExplanationCandidate],
+    ) -> MatchExplanationResult {
+        explanations: list[MatchExplanation] = [
+            MatchExplanation(
+                profile_id=candidate.profile_id,
+                explanation="A grounded recorded explanation.",
+            ) for candidate in candidates
+        ];
+        if self.failure_mode == "order" {
+            explanations[0].profile_id = candidates[1].profile_id;
+        } elif self.failure_mode == "empty" {
+            explanations[0].explanation = " ";
+        } elif self.failure_mode == "oversized" {
+            explanations[0].explanation = "x" * 361;
+        }
+        return MatchExplanationResult(
+            mode="recorded", model="recorded-invalid", explanations=explanations
+        );
+    }
+}
+
+
+obj FailingExplainer(MatchExplainer) {
+    override def explain(
+        _visitor_name: str,
+        _visitor_profile: str,
+        _candidates: list[ExplanationCandidate],
+    ) -> MatchExplanationResult {
+        raise RuntimeError("SECRET raw OpenAI response must not escape");
+    }
+}
+
+
 test "strict corpus loader normalizes sorts and revisions deterministically" {
     with tempfile.TemporaryDirectory(prefix="stage15-corpus-") as corpus_path {
         write_corpus(corpus_path, "\r\n");
@@ -221,6 +287,7 @@ test "known vectors rank the complete pool with stable ties and grounded cards" 
             "I enjoy careful conversation and creative work.",
             corpus_path,
             KnownVectorProvider(),
+            RecordedMatchExplainer(),
         );
         assert response.ok;
         assert response.error_code == "";
@@ -228,6 +295,8 @@ test "known vectors rank the complete pool with stable ties and grounded cards" 
         assert response.recombined_item_count == 101;
         assert response.candidate_count == 100;
         assert response.runtime_tag == "connection-embedding-fallback:1.0.0";
+        assert response.explanation_mode == "recorded";
+        assert response.explanation_model == "recorded-stage15-v1";
         assert len(response.matches) == 3;
         assert [card.profile_id for card in response.matches] == [
             "person-099",
@@ -238,10 +307,66 @@ test "known vectors rank the complete pool with stable ties and grounded cards" 
         assert response.matches[1].score == response.matches[2].score;
         for card in response.matches {
             assert card.excerpt in profile_body(int(card.profile_id[-3:]));
-            assert card.reasons == [
-                "Deterministic demo ranking placed this fictional profile near your text."
-            ];
+            assert len(card.explanation) > 0;
+            assert card.reasons == [card.explanation];
         }
+    }
+}
+
+
+test "explainer runs once after retrieval with full ordered source profiles" {
+    with tempfile.TemporaryDirectory(
+        prefix="stage15-explainer-input-"
+    ) as corpus_path {
+        write_corpus(corpus_path, count=3);
+        explainer = CapturingRecordedExplainer();
+        visitor_profile: str = "I enjoy careful conversation and creative work.";
+        response: ProfileMatchResponse = match_profile_with(
+            " Visitor ", visitor_profile, corpus_path, KnownVectorProvider(), explainer,
+        );
+        assert response.ok;
+        assert explainer.call_count == 1;
+        assert explainer.visitor_name == "Visitor";
+        assert explainer.visitor_profile == visitor_profile;
+        assert [candidate.profile_id for candidate in explainer.candidates] == [
+            card.profile_id for card in response.matches
+        ];
+        for candidate in explainer.candidates {
+            assert candidate.body == profile_body(int(candidate.profile_id[-3:]));
+        }
+    }
+}
+
+
+test "invalid and failed explanation responses are safe and retryable" {
+    with tempfile.TemporaryDirectory(
+        prefix="stage15-explainer-errors-"
+    ) as corpus_path {
+        write_corpus(corpus_path, count=3);
+        for failure_mode in ["order", "empty", "oversized"] {
+            invalid: ProfileMatchResponse = match_profile_with(
+                "Visitor",
+                "profile",
+                corpus_path,
+                KnownVectorProvider(),
+                InvalidExplanationExplainer(failure_mode=failure_mode),
+            );
+            assert not invalid.ok;
+            assert invalid.error_code == "explanation_result_invalid";
+            assert invalid.error_retryable;
+            assert len(invalid.matches) == 0;
+        }
+        failed: ProfileMatchResponse = match_profile_with(
+            "Visitor",
+            "profile",
+            corpus_path,
+            KnownVectorProvider(),
+            FailingExplainer(),
+        );
+        assert not failed.ok;
+        assert failed.error_code == "explanation_failed";
+        assert failed.error_retryable;
+        assert "SECRET" not in str(failed);
     }
 }
 
@@ -256,6 +381,7 @@ test "matching submits dynamic corpus size plus visitor and ranks every candidat
             "I enjoy careful conversation and creative work.",
             corpus_path,
             KnownVectorProvider(),
+            RecordedMatchExplainer(),
         );
         assert response.ok;
         assert response.submitted_item_count == 4;
@@ -277,10 +403,18 @@ test "matching is deterministic and does not return visitor text" {
         write_corpus(corpus_path);
         secret_profile: str = "PRIVATE-VISITOR-TEXT creative communities";
         first: ProfileMatchResponse = match_profile_with(
-            "Visitor", secret_profile, corpus_path, KnownVectorProvider()
+            "Visitor",
+            secret_profile,
+            corpus_path,
+            KnownVectorProvider(),
+            RecordedMatchExplainer(),
         );
         second: ProfileMatchResponse = match_profile_with(
-            "Visitor", secret_profile, corpus_path, KnownVectorProvider()
+            "Visitor",
+            secret_profile,
+            corpus_path,
+            KnownVectorProvider(),
+            RecordedMatchExplainer(),
         );
         assert first.ok and second.ok;
         assert [card.profile_id for card in first.matches] == [
@@ -298,27 +432,47 @@ test "safe validation and provider failures preserve retry semantics" {
     with tempfile.TemporaryDirectory(prefix="stage15-errors-") as corpus_path {
         write_corpus(corpus_path);
         blank: ProfileMatchResponse = match_profile_with(
-            " ", "profile", corpus_path, KnownVectorProvider()
+            " ",
+            "profile",
+            corpus_path,
+            KnownVectorProvider(),
+            RecordedMatchExplainer(),
         );
         assert not blank.ok;
         assert blank.error_code == "name_required";
         blank_profile: ProfileMatchResponse = match_profile_with(
-            "Visitor", " \n ", corpus_path, KnownVectorProvider()
+            "Visitor",
+            " \n ",
+            corpus_path,
+            KnownVectorProvider(),
+            RecordedMatchExplainer(),
         );
         assert not blank_profile.ok;
         assert blank_profile.error_code == "profile_required";
         oversized_name: ProfileMatchResponse = match_profile_with(
-            "n" * 101, "profile", corpus_path, KnownVectorProvider()
+            "n" * 101,
+            "profile",
+            corpus_path,
+            KnownVectorProvider(),
+            RecordedMatchExplainer(),
         );
         assert not oversized_name.ok;
         assert oversized_name.error_code == "name_too_long";
         oversized: ProfileMatchResponse = match_profile_with(
-            "Visitor", "x" * 12001, corpus_path, KnownVectorProvider()
+            "Visitor",
+            "x" * 12001,
+            corpus_path,
+            KnownVectorProvider(),
+            RecordedMatchExplainer(),
         );
         assert not oversized.ok;
         assert oversized.error_code == "profile_too_long";
         failure: ProfileMatchResponse = match_profile_with(
-            "Visitor", "profile", corpus_path, FailingProvider()
+            "Visitor",
+            "profile",
+            corpus_path,
+            FailingProvider(),
+            RecordedMatchExplainer(),
         );
         assert not failure.ok;
         assert failure.error_code == "provider_failed";
@@ -339,6 +493,7 @@ test "provider result validation rejects missing duplicate nonfinite and dimensi
                 "profile",
                 corpus_path,
                 InvalidResultProvider(failure_mode=failure_mode),
+                RecordedMatchExplainer(),
             );
             assert not response.ok;
             assert response.error_code == "provider_result_invalid";
@@ -373,7 +528,11 @@ test "provider factory exposes a deterministic safe failure switch" {
         try {
             os.environ["CONNECTION_PROFILE_FORCE_FAILURE"] = "1";
             response: ProfileMatchResponse = match_profile_with(
-                "Visitor", "profile", corpus_path, default_embedding_provider(),
+                "Visitor",
+                "profile",
+                corpus_path,
+                default_embedding_provider(),
+                RecordedMatchExplainer(),
             );
             assert not response.ok;
             assert response.error_code == "provider_failed";

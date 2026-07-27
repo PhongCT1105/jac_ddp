@@ -5,6 +5,13 @@ import math;
 import os;
 import from src.contracts.models { EmbeddingItem }
 import from src.stage15.corpus { DemoCorpus, DemoProfile, load_demo_corpus }
+import from src.stage15.explainer {
+    ExplanationCandidate,
+    MatchExplainer,
+    MatchExplanationResult,
+    default_match_explainer,
+    validate_explanation_result
+}
 import from src.stage15.provider {
     EmbeddingProvider,
     ProviderEmbeddingResult,
@@ -29,6 +36,7 @@ obj ProfileMatchCard {
         name: str,
         score: float,
         excerpt: str,
+        explanation: str,
         reasons: list[str];
 }
 
@@ -48,6 +56,8 @@ obj ProfileMatchResponse {
         recombined_item_count: int,
         candidate_count: int,
         terminal_states: list[str],
+        explanation_mode: str,
+        explanation_model: str,
         matches: list[ProfileMatchCard];
 }
 
@@ -76,6 +86,8 @@ def error_response(
         recombined_item_count=0,
         candidate_count=0,
         terminal_states=[],
+        explanation_mode="",
+        explanation_model="",
         matches=[],
     );
 }
@@ -248,6 +260,7 @@ def rank_profiles(
                 name=candidate.profile.name,
                 score=PY_ROUND(candidate.canonical_score, 4) as float,
                 excerpt=deterministic_excerpt(candidate.profile.body),
+                explanation="",
                 reasons=[neutral_reason(result.runtime_tag)],
             )
         );
@@ -257,7 +270,11 @@ def rank_profiles(
 
 
 def match_profile_with(
-    name: str, profile_markdown: str, corpus_path: str, provider: EmbeddingProvider,
+    name: str,
+    profile_markdown: str,
+    corpus_path: str,
+    provider: EmbeddingProvider,
+    explainer: MatchExplainer,
 ) -> ProfileMatchResponse {
     input_error: ProfileMatchError | None = validate_visitor_input(
         name, profile_markdown
@@ -300,6 +317,41 @@ def match_profile_with(
         if len(cards) != 3 {
             raise ValueError("provider_result_invalid");
         }
+    } except ValueError {
+        return error_response(
+            "provider_result_invalid",
+            "The matching service returned an invalid result. Try again.",
+            True,
+        );
+    } except Exception {
+        return error_response(
+            "provider_failed",
+            "The matching service is temporarily unavailable. Try again.",
+            True,
+        );
+    }
+    candidates_by_id: dict[str, DemoProfile] = {
+        profile.profile_id: profile for profile in corpus.profiles
+    };
+    candidates: list[ExplanationCandidate] = [];
+    for card in cards {
+        selected: DemoProfile = candidates_by_id[card.profile_id];
+        candidates.append(
+            ExplanationCandidate(
+                profile_id=selected.profile_id, name=selected.name, body=selected.body,
+            )
+        );
+    }
+    try {
+        explanation_result: MatchExplanationResult = explainer.explain(
+            name.strip(), profile_markdown.strip(), candidates
+        );
+        validate_explanation_result(explanation_result, candidates);
+        for index in range(len(cards)) {
+            explanation: str = explanation_result.explanations[index].explanation;
+            cards[index].explanation = explanation;
+            cards[index].reasons = [explanation];
+        }
         return ProfileMatchResponse(
             ok=True,
             error_code="",
@@ -315,18 +367,20 @@ def match_profile_with(
             recombined_item_count=provider_result.recombined_item_count,
             candidate_count=len(corpus.profiles),
             terminal_states=[state for state in provider_result.terminal_states],
+            explanation_mode=explanation_result.mode,
+            explanation_model=explanation_result.model,
             matches=cards,
         );
     } except ValueError {
         return error_response(
-            "provider_result_invalid",
-            "The matching service returned an invalid result. Try again.",
+            "explanation_result_invalid",
+            "The explanation service returned an invalid result. Try again.",
             True,
         );
     } except Exception {
         return error_response(
-            "provider_failed",
-            "The matching service is temporarily unavailable. Try again.",
+            "explanation_failed",
+            "The explanation service is temporarily unavailable. Try again.",
             True,
         );
     }
@@ -337,6 +391,10 @@ def:pub find_profile_matches(
     name: str, profile_markdown: str,
 ) -> ProfileMatchResponse {
     return match_profile_with(
-        name, profile_markdown, default_corpus_path(), default_embedding_provider()
+        name,
+        profile_markdown,
+        default_corpus_path(),
+        default_embedding_provider(),
+        default_match_explainer(),
     );
 }

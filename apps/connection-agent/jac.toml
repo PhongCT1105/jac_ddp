@@ -9,6 +9,12 @@ jac-version = ">=0.34.6"
 [dependencies]
 requests = "~=2.32"
 
+[byllm.model]
+default_model = "gpt-5.6-terra"
+
+[byllm.call_params]
+max_tokens = 700
+
 [test]
 directory = "tests"
 filter = "*_tests.jac"

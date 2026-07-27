@@ -92,8 +92,8 @@ jac browse -s "${smoke_session}" fill '#visitor-profile' \
 click_selector '#find-connections'
 jac browse -s "${smoke_session}" wait '#edit-profile' >/dev/null
 assert_snapshot "Your top connections"
-assert_snapshot "Fictional demo profiles"
-assert_snapshot "Why you might connect"
+assert_snapshot "FICTIONAL DEMO PROFILES"
+assert_snapshot "WHY YOU MIGHT CONNECT"
 assert_snapshot "View profile"
 assert_focus "Your top connections"
 jac browse -s "${smoke_session}" eval \

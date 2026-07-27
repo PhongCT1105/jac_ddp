@@ -261,7 +261,7 @@ cl {
                     <div>
                         <h2 id="privacy-heading">Keep sensitive information out</h2>
                         <p>
-                            Do not enter passwords, secrets, private contact details, health information, or anything you would not share in a public demo. This mock-first experience uses your text only for this request and does not intentionally save it.
+                            Your profile is processed by the embedding service and OpenAI to create this result. Do not enter passwords, private contact details, health information, or other sensitive information. This app does not intentionally save your profile.
                         </p>
                     </div>
                 </aside>
@@ -433,7 +433,7 @@ cl {
                     <span aria-hidden="true">·</span>
                     <span>No account</span>
                     <span aria-hidden="true">·</span>
-                    <span>No OpenAI tokens</span>
+                    <span>AI explanations</span>
                 </footer>
             </main>;
     }
