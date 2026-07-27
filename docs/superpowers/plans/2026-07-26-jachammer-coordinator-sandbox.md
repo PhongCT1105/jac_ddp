@@ -28,6 +28,7 @@
 **Files:**
 - Create: `jac.toml`
 - Create: `main.sv.jac`
+- Create: `platform/__init__.jac`
 - Create: `platform/coordinator/src/service.jac`
 - Create: `tests/deploy/test_jachammer_root.sh`
 - Modify: `platform/coordinator/main.sv.jac`
@@ -143,6 +144,10 @@ include platform.coordinator.src.model;
 include platform.coordinator.src.service;
 ```
 
+Create an empty `platform/__init__.jac` so the repository package takes
+precedence over Python's standard-library `platform` module when the root
+entrypoint runs.
+
 The service module must not include the model itself; each entrypoint includes
 the same two modules into one program namespace.
 
@@ -232,7 +237,7 @@ Expected: both commands exit 0 and print their `OK` markers.
 - [ ] **Step 9: Commit Task 1**
 
 ```bash
-git add jac.toml main.sv.jac \
+git add jac.toml main.sv.jac platform/__init__.jac \
   platform/coordinator/main.sv.jac \
   platform/coordinator/src/model.jac \
   platform/coordinator/src/service.jac \
