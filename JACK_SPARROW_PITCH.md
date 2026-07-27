@@ -1,11 +1,26 @@
 # Jack Sparrow
 
-> A connection agent built in Jac that helps you find one person worth meeting.
+> Two separate problems. Two systems built in Jac.
 
-People go to hackathons and conferences to meet others, but most still talk to
-whoever they know or happen to sit beside. An attendee can be surrounded by
-hundreds of relevant people without knowing who they are. A directory or
-networking feed does not give them a useful reason to talk now.
+We are building a human connection product and a distributed computing
+platform. They solve different problems.
+
+Meeting the right new people is hard. Someone may be looking for a friend,
+collaborator, learning partner, or simply another person who shares an interest,
+but most introductions still depend on existing networks, physical proximity,
+or chance. Directories and networking feeds show many profiles without helping
+someone understand who they might genuinely want to talk to, and why. Jack
+Sparrow solves this problem.
+
+At the same time, personal computers contain a large amount of unused computing
+power, but applications cannot use them like a reliable cloud. Independent
+machines disconnect, fail, and cannot automatically be trusted. JacGrid solves
+this second problem.
+
+Jack Sparrow is our primary, human-facing product. JacGrid is the infrastructure
+system underneath it and can also serve other applications. Jack Sparrow is
+JacGrid's first application, so the two systems connect technically even though
+they address different needs.
 
 Jack Sparrow lets a person describe themselves, what they are working on, and
 who they would like to meet in ordinary language. It searches the profiles of
@@ -22,6 +37,11 @@ At this hackathon, an attendee might write:
 Jack Sparrow could find a relevant attendee and, after mutual interest, help
 them meet during the event. The goal is a conversation or collaboration that
 would not otherwise have happened—not more time in an app.
+
+Hackathon organizers could share Jack Sparrow with everyone at
+registration. Participants could describe what they want to build and what
+skills or perspectives they need, then find complementary teammates faster
+instead of relying on existing friendships or chance encounters.
 
 ## Built in Jac
 
@@ -47,17 +67,15 @@ third-user protection. The next release combines both parts for real people.
 
 ## A distributed computing system built in Jac
 
-Personal computers contain unused computing power, but applications cannot use
-them like a reliable cloud. Independent machines disconnect, fail, and cannot
-automatically be trusted.
-
-We built JacGrid in Jac to solve this. It divides an application job into tasks,
-runs them on available computers inside restricted sandboxes, verifies results,
-retries failed work, and combines the output.
+JacGrid turns those independent machines into a usable compute service. It
+divides an application job into tasks, runs them on available computers inside
+restricted sandboxes, verifies results, retries failed work, and combines the
+output.
 
 We have validated JacGrid across multiple computers on a local network. It can
 detect a lost worker, move its task, verify the result, and keep an audit trail.
-Jack Sparrow is its first application, although Phase 1.5 can run on one server.
+The current Jack Sparrow demo can run on one server; JacGrid is designed for
+larger jobs from Jack Sparrow and other applications.
 
 The longer-term model is that applications get distributed computing capacity
 while people earn money by sharing spare capacity. Real payments and open
