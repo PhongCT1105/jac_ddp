@@ -2,23 +2,31 @@
 
 ## Inspiration
 
-At hackathons, people often form groups with whoever they already know or
-happen to meet first. Someone with the perfect skills or idea may be in the same
-room, but finding them early is difficult.
+Finding the right person is a complex matching problem. People may connect
+through shared interests, complementary skills, similar values, compatible
+working styles, or a specific problem they both care about. These dimensions
+are difficult to represent with filters or a single similarity score.
 
-We built JackSparrow to help people discover who they should talk to and why.
+We built JackSparrow to combine fast semantic search with qualitative LLM
+analysis. A hackathon is one useful example: participants need to form groups
+early, but often join whoever they already know or happen to meet first. The
+right teammate may be in the same room and still remain undiscovered.
 
 ## What it does
 
-A user writes a short profile describing their interests, skills, and what they
-want to build. The system searches 100 demo profiles and suggests three people.
+A user writes a profile describing their interests, skills, values, projects,
+and the kind of person they want to meet. The system searches 100 demo profiles
+and suggests three people.
 
 The process is:
 
 **profile text → distributed embeddings → ranked matches → LLM explanations**
 
-Each result includes a simple explanation of why that person could be a useful
-teammate or conversation partner.
+Embeddings make it practical to retrieve the strongest candidates from the
+complete pool. An LLM then compares the richer meaning in both profiles and
+writes a grounded explanation of the shared or complementary dimensions. This
+combines quantitative retrieval with qualitative analysis instead of treating
+human connection as one score.
 
 ## How we built it
 
