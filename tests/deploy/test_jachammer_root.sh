@@ -30,6 +30,14 @@ fi
 [ "$(readlink "$REPO_ROOT/src/model.jac")" = "../platform/coordinator/src/model.jac" ] \
     || fail "root src/model.jac points to an unexpected target"
 
+PROJECT_KIND="$(
+    "$PYTHON" -c \
+        'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["project"]["kind"])' \
+        "$REPO_ROOT/jac.toml"
+)"
+[ "$PROJECT_KIND" = "service" ] \
+    || fail "root Jac project kind must be service for current JacHammer runtimes"
+
 PYTHONPATH="$REPO_ROOT" "$PYTHON" -c \
     'import platform; assert callable(platform.system); assert platform.system()'
 
