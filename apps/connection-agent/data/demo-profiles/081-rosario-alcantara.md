@@ -1,0 +1,13 @@
+---
+id: demo-081-rosario-alcantara
+name: Rosario Alcántara
+---
+A woman has sold cilantro on the same corner of Mercado de Surquillo for as long as I've been coming there, and we have watched each other age for two decades. I know her grandchildren's names and which supplier cheats her on weight. What I still don't fully know, after twenty years, is whether the thing I built out of watching her — the theory, the careful sentences about informal credit and trust as collateral — was for her, about her, or, on a bad day, mostly for me.
+
+I trained as an anthropologist in Lima and never really left the markets I was supposed to study from some cooler remove. It started small: how do vendors who can't get a bank loan build enough credit to survive a sick child, a rent hike from a market association run like a small mafia. The answer was a whole architecture of obligation that has almost nothing to do with interest rates and everything to do with who remembers who helped whom in 2009 — loans of fifty soles repaid three years later, one woman whose mental ledger was so precise she could tell you, unprompted, exactly how much credit she'd extended across the aisle on any given Tuesday.
+
+I wrote a book about it once, when I still believed a book was sturdy enough to hold what I'd seen. Since then, mostly articles, students who do this better than I do now, and an unfinished manuscript restarted under four framings. The market has changed under me — credit apps, younger vendors trusting an algorithm's silence more than a neighbor's word, old ledgers dying with the women who kept them. There is clearly another book in this, and I'm no longer sure I'm the one who should write it, or that it would honor what I've learned rather than just extend my own career on the backs of people whose lives don't wait for my chapters.
+
+Part of the hesitation is plain exhaustion — fieldwork on your knees in a market aisle at five in the morning is physical. Part is that I don't know who I am if I'm not building toward the next study; colleagues who retired gracefully into teaching seem fine with it, and I don't trust that fineness in myself yet.
+
+I'm not looking for validation on the book question so much as company for thinking about it honestly — people who built something over decades and had to ask what it was for, anyone close enough to a community to be trusted by it and now reckoning with what that trust obligates. I like arguments that don't resolve cleanly, and people who ask a second question instead of offering comfort. I keep a small, badly organized rooftop garden of native potatoes, mostly to fail at something with no stakes attached.

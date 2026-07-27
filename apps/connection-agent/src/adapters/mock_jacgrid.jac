@@ -142,6 +142,21 @@ def validate_workload_result(
 }
 
 
+def validated_runtime_tag(
+    output: dict[str, any], descriptor: WorkloadDescriptor,
+) -> str {
+    execution = output.get("__jacgrid_execution");
+    if not isinstance(execution, dict) {
+        raise ValueError("workload_identity_mismatch");
+    }
+    runtime_tag = execution.get("runtime");
+    if not isinstance(runtime_tag, str) or runtime_tag not in descriptor.runtime_tags {
+        raise ValueError("workload_identity_mismatch");
+    }
+    return runtime_tag;
+}
+
+
 def invoke_workload(workload_dir: str, items: list[EmbeddingItem]) -> dict[str, any] {
     try {
         descriptor: WorkloadDescriptor = load_workload_descriptor(workload_dir);
@@ -247,6 +262,7 @@ def submit_embeddings(
 
     descriptor: WorkloadDescriptor = load_workload_descriptor(mock.workload_dir);
     vectors: dict[str, list[float]] = {};
+    runtime_tag: str = "";
     start: int = 0;
     while start < len(items) {
         stop: int = min(start + mock.chunk_size, len(items));
@@ -257,6 +273,12 @@ def submit_embeddings(
         chunk_vectors: dict[str, list[float]] = validate_workload_result(
             output, chunk_ids, descriptor,
         );
+        chunk_runtime_tag: str = validated_runtime_tag(output, descriptor);
+        if len(runtime_tag) == 0 {
+            runtime_tag = chunk_runtime_tag;
+        } elif runtime_tag != chunk_runtime_tag {
+            raise ValueError("workload_identity_mismatch");
+        }
         for item_id in chunk_ids {
             vectors[item_id] = chunk_vectors[item_id];
         }
@@ -274,6 +296,7 @@ def submit_embeddings(
         vectors=vectors,
         item_count=len(items),
         result_sha256=canonical_result_hash(expected_ids, vectors, descriptor),
+        runtime_tag=runtime_tag,
     );
     mock.jobs_by_key[idempotency_key] = result;
     mock.request_hashes_by_key[idempotency_key] = request_hash;

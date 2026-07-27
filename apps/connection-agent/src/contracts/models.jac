@@ -47,7 +47,8 @@ obj EmbeddingBatchResult {
         states: list[str],
         vectors: dict[str, list[float]],
         item_count: int,
-        result_sha256: str;
+        result_sha256: str,
+        runtime_tag: str = "";
 }
 
 obj CandidateReference {

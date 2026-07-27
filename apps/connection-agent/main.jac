@@ -9,6 +9,7 @@ import from web.fixture {
     load_thread,
     send_message
 }
+import from src.stage15.profile_match { find_profile_matches }
 
 cl {
     import from web.main { app as WebApp }

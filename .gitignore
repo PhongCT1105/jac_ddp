@@ -32,6 +32,9 @@ dist/
 
 # Large local data and experiment outputs
 data/
+!apps/connection-agent/data/
+!apps/connection-agent/data/demo-profiles/
+!apps/connection-agent/data/demo-profiles/*.md
 dataset/
 datasets/
 artifacts/

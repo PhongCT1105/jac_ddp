@@ -77,56 +77,40 @@ assert_focus() {
 }
 
 jac browse -s "${smoke_session}" -v 390x844 open "http://localhost:${smoke_port}/" >/dev/null
-jac browse -s "${smoke_session}" wait '#persona' >/dev/null
+jac browse -s "${smoke_session}" wait '#visitor-name' >/dev/null
+assert_snapshot "Find an unexpected conversation"
+assert_snapshot "Keep sensitive information out"
+click_selector '#find-connections'
+assert_snapshot "Enter a name or nickname."
 jac browse -s "${smoke_session}" eval \
-  "const s=document.querySelector('#persona'); s.value='alice_builder'; s.dispatchEvent(new Event('change',{bubbles:true})); true" \
-  >/dev/null
-assert_snapshot "Software builder seeking thoughtful technical collaboration"
-assert_focus "Review your demo profile"
-click_selector '#confirm-profile'
-assert_focus "Profile confirmed"
-click_selector '#show-suggestion'
-assert_snapshot "Bob Researcher"
-assert_snapshot "Bob Researcher also mentions distributed systems."
-assert_focus "Bob Researcher"
-click_selector '#open-interest'
-assert_snapshot "Your response is private."
-assert_snapshot "Bob Researcher: a grounded connection"
-assert_focus "Thanks for letting us know"
-if jac browse -s "${smoke_session}" snapshot | grep -Fq "It’s a match"; then
-  echo "Alice's one-sided open leaked a match." >&2
-  exit 1
-fi
-click_selector '#switch-bob'
-assert_snapshot "Distributed systems researcher and software builder"
-assert_focus "Review your demo profile"
-click_selector '#confirm-profile'
-click_selector '#show-suggestion'
-assert_snapshot "Alice Builder"
-click_selector '#open-interest'
-assert_snapshot "It’s a match"
-assert_snapshot "Alice Builder: a grounded connection"
-assert_focus "It’s a match"
-click_selector '#open-thread'
-assert_focus "Private human conversation"
-assert_snapshot "Alice Builder: a grounded connection"
-jac browse -s "${smoke_session}" fill '#message' 'Hi Alice' >/dev/null
-click_selector '#send-message'
-assert_snapshot "Hi Alice"
-click_selector '#reset-demo'
-assert_snapshot "Demo reset. Choose a local demo person."
+  "document.activeElement && document.activeElement.id" | grep -Fq 'visitor-name'
 
+jac browse -s "${smoke_session}" fill '#visitor-name' 'Sebastian Demo' >/dev/null
+jac browse -s "${smoke_session}" fill '#visitor-profile' \
+  'I build thoughtful software and enjoy education, community projects, distributed systems, creative tools, long walks, and conversations with curious people.' >/dev/null
+click_selector '#find-connections'
+jac browse -s "${smoke_session}" wait '#edit-profile' >/dev/null
+assert_snapshot "Three fictional profiles worth exploring"
+assert_snapshot "Deterministic demo ranking"
+assert_snapshot "fictional candidates ranked"
+assert_snapshot "They are not compatibility scores"
+assert_focus "Three fictional profiles worth exploring"
 jac browse -s "${smoke_session}" eval \
-  "(()=>{const s=document.querySelector('#persona'); s.value=''; s.dispatchEvent(new Event('change',{bubbles:true})); return true})()" \
-  >/dev/null
-assert_snapshot "Unable to select this demo person. Try again."
-assert_snapshot "Retry profile"
-click_selector '#retry-profile'
-assert_snapshot "Unable to select this demo person. Try again."
-click_selector '#reset-demo'
+  "document.querySelectorAll('.result-card').length" | grep -Fq '3'
+
+click_selector '#edit-profile'
+jac browse -s "${smoke_session}" eval \
+  "document.querySelector('#visitor-profile').value.includes('distributed systems')" \
+  | grep -Fq 'true'
+click_selector '#find-connections'
+jac browse -s "${smoke_session}" wait '#start-over' >/dev/null
+click_selector '#start-over'
+jac browse -s "${smoke_session}" eval \
+  "document.querySelector('#visitor-name').value === '' && document.querySelector('#visitor-profile').value === ''" \
+  | grep -Fq 'true'
 
 jac browse -s "${desktop_session}" -v 1280x800 open "http://localhost:${smoke_port}/" >/dev/null
-jac browse -s "${desktop_session}" wait '#persona' >/dev/null
-jac browse -s "${desktop_session}" snapshot | grep -Fq "Connection Agent"
+jac browse -s "${desktop_session}" wait '#visitor-profile' >/dev/null
+jac browse -s "${desktop_session}" snapshot | grep -Fq "Find an unexpected conversation"
 
 echo "Web experience checks passed."
