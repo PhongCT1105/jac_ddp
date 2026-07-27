@@ -65,14 +65,14 @@ fail() {
 
 (
     cd "$REPO_ROOT"
-    "$JAC" check .
+    "$JAC" check main.sv.jac
     JACGRID_KEY="$TEST_KEY" JACGRID_HOSTED=1 JACGRID_SELFTEST=1 \
         "$JAC" run main.sv.jac
 )
 
 (
     cd "$REPO_ROOT/platform/coordinator"
-    "$JAC" check .
+    "$JAC" check main.sv.jac
     JACGRID_KEY="$TEST_KEY" JACGRID_HOSTED=1 JACGRID_SELFTEST=1 \
         "$JAC" run main.sv.jac
 )
