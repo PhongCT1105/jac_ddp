@@ -93,7 +93,7 @@ if ! RAW_RESPONSE="$(curl --noproxy '*' -sS --connect-timeout 5 --max-time 30 \
     -H 'Content-Type: application/json' \
     -d "$REQUEST_BODY")"; then
     echo "ERROR: could not submit the demo job to $COORDINATOR." >&2
-    echo "Check the coordinator IP/port, macOS firewall, and Wi-Fi connectivity." >&2
+    echo "Check the deployment URL, JacHammer sandbox status, internet access, and shared key." >&2
     exit 1
 fi
 

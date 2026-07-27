@@ -122,7 +122,7 @@ if ! RAW_RESPONSE="$(curl --noproxy '*' -sS --connect-timeout 5 --max-time 15 \
     -H 'Content-Type: application/json' \
     -d "$AUTH_BODY")"; then
     echo "ERROR: cannot reach JacGrid coordinator at $COORDINATOR." >&2
-    echo "Likely causes: wrong IP/port, macOS firewall, or the Macs are not on the same Wi-Fi." >&2
+    echo "Check the deployment URL, JacHammer sandbox status, internet access, and shared key." >&2
     exit 1
 fi
 
@@ -130,7 +130,7 @@ PAYLOAD="$(printf '%s' "$RAW_RESPONSE" \
     | jq -ce '(.data.reports // .reports // [])[0] // empty' 2>/dev/null || true)"
 if [ -z "$PAYLOAD" ]; then
     echo "ERROR: $COORDINATOR responded, but not with a JacGrid network_status payload." >&2
-    echo "Check that the URL points to the coordinator port, not another local service." >&2
+    echo "Check the deployment URL, JacHammer sandbox status, internet access, and shared key." >&2
     exit 1
 fi
 if [ "$(printf '%s' "$PAYLOAD" | jq -r '.error // empty')" = "unauthorized" ]; then
@@ -139,7 +139,7 @@ if [ "$(printf '%s' "$PAYLOAD" | jq -r '.error // empty')" = "unauthorized" ]; t
 fi
 if ! printf '%s' "$PAYLOAD" | jq -e '.server_time and (.error == null)' >/dev/null 2>&1; then
     echo "ERROR: coordinator readiness check failed: $PAYLOAD" >&2
-    echo "Check the IP, firewall, shared key, and whether both Macs are on the same Wi-Fi." >&2
+    echo "Check the deployment URL, JacHammer sandbox status, internet access, and shared key." >&2
     exit 1
 fi
 
