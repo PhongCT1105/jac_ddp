@@ -123,7 +123,8 @@ Expected: exit non-zero with
 
 Move the coordinator helpers, walkers, explanatory comments, and self-test
 entry block from `platform/coordinator/main.sv.jac` into
-`platform/coordinator/src/service.jac`.
+`platform/coordinator/src/service.jac`. Add `import os;` at the top because
+the service's hosted guard and self-test read environment variables directly.
 
 Do not copy or rename walkers. The nested entrypoint becomes:
 
