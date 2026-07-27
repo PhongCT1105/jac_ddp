@@ -72,6 +72,7 @@ sandbox/work/*
 # Editor / OS noise
 *.swo
 .superpowers/
+.worktrees/
 __jac_gen__/
 *.session
 
