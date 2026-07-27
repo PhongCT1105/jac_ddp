@@ -18,18 +18,25 @@ fail() {
     || fail "missing platform stdlib compatibility initializer"
 [ -f "$REPO_ROOT/main.jac" ] || fail "missing root main.jac"
 [ -L "$REPO_ROOT/main.jac" ] || fail "root main.jac must be a symlink"
-[ -f "$REPO_ROOT/main.sv.jac" ] || fail "missing root main.sv.jac"
-[ -L "$REPO_ROOT/main.sv.jac" ] || fail "root main.sv.jac must be a symlink"
+if [ -e "$REPO_ROOT/main.sv.jac" ] || [ -L "$REPO_ROOT/main.sv.jac" ]; then
+    fail "root main.sv.jac must not duplicate the automatically loaded server variant"
+fi
 [ -d "$REPO_ROOT/src" ] || fail "missing root src directory"
 [ ! -L "$REPO_ROOT/src" ] || fail "root src must be a real directory"
 [ -L "$REPO_ROOT/src/model.jac" ] \
     || fail "root src/model.jac must be a symlink"
 [ "$(readlink "$REPO_ROOT/main.jac")" = "platform/coordinator/main.sv.jac" ] \
     || fail "root main.jac points to an unexpected target"
-[ "$(readlink "$REPO_ROOT/main.sv.jac")" = "platform/coordinator/main.sv.jac" ] \
-    || fail "root main.sv.jac points to an unexpected target"
 [ "$(readlink "$REPO_ROOT/src/model.jac")" = "../platform/coordinator/src/model.jac" ] \
     || fail "root src/model.jac points to an unexpected target"
+
+PROJECT_KIND="$(
+    "$PYTHON" -c \
+        'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["project"]["kind"])' \
+        "$REPO_ROOT/jac.toml"
+)"
+[ "$PROJECT_KIND" = "service" ] \
+    || fail "root Jac project kind must be service for current JacHammer runtimes"
 
 PYTHONPATH="$REPO_ROOT" "$PYTHON" -c \
     'import platform; assert callable(platform.system); assert platform.system()'
