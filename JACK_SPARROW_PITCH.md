@@ -1,89 +1,37 @@
-# Jack Sparrow
+# JackSparrow
 
-> Two separate problems. Two systems built in Jac.
+JackSparrow helps people find someone worth talking to.
 
-We are building a human connection product and a distributed computing
-platform. They solve different problems.
+A user writes a short profile about who they are, what they are working on, and
+who they would like to meet. Connection Agent compares it with the available
+profiles and returns three people with a clear reason for each suggestion.
 
-Meeting the right new people is hard. Someone may be looking for a friend,
-collaborator, learning partner, or simply another person who shares an interest,
-but most introductions still depend on existing networks, physical proximity,
-or chance. Directories and networking feeds show many profiles without helping
-someone understand who they might genuinely want to talk to, and why. Jack
-Sparrow solves this problem.
+## How it works
 
-At the same time, personal computers contain a large amount of unused computing
-power, but applications cannot use them like a reliable cloud. Independent
-machines disconnect, fail, and cannot automatically be trusted. JacGrid solves
-this second problem.
+1. Connection Agent sends the user profile and the profile pool to JacGrid.
+2. JacGrid distributes the embedding work across connected computers.
+3. The completed embeddings are recombined and used to rank the full pool.
+4. The user profile and the three highest-ranked profiles go to an LLM through
+   Jac's typed `by llm()` feature.
+5. The LLM writes a short, grounded explanation for each result.
 
-Jack Sparrow is our primary, human-facing product. JacGrid is the infrastructure
-system underneath it and can also serve other applications. Jack Sparrow is
-JacGrid's first application, so the two systems connect technically even though
-they address different needs.
+The demo uses 100 fictional profiles. The next version uses real, opted-in
+profiles and creates a private conversation only after both people independently
+choose to meet.
 
-Jack Sparrow lets a person describe themselves, what they are working on, and
-who they would like to meet in ordinary language. It searches the profiles of
-people who chose to join and explains why a particular conversation might be
-worthwhile. If both people independently say they are open to meeting, it
-creates a private chat for them.
+## JacGrid
 
-At this hackathon, an attendee might write:
-
-> I am building tools for education. I would like to meet someone working on
-> distributed systems, unusual uses of AI, or technology that brings people
-> together in real life.
-
-Jack Sparrow could find a relevant attendee and, after mutual interest, help
-them meet during the event. The goal is a conversation or collaboration that
-would not otherwise have happened—not more time in an app.
-
-Hackathon organizers could share Jack Sparrow with everyone at
-registration. Participants could describe what they want to build and what
-skills or perspectives they need, then find complementary teammates faster
-instead of relying on existing friendships or chance encounters.
+JacGrid is the distributed system underneath Connection Agent. It divides work
+between computers, verifies results, retries failed tasks, and recombines the
+output. Connection Agent is its first application, but JacGrid can run workloads
+for other applications too.
 
 ## Built in Jac
 
-Jack Sparrow is built in Jac from front to back: browser interface, server
-operations, typed models, matching, privacy, messaging, tests, and embedding
-workload.
+The browser interface, server, typed models, matching flow, LLM call, embedding
+workload, distributed coordinator, worker logic, validation, and tests are all
+built in Jac.
 
-Jac fits because the product is a graph of people, suggestions, private
-decisions, matches, and conversations. Walkers find candidates, record
-interest, create matches, and open private conversations. Jac is not a wrapper;
-Jac is the application.
+The full path is:
 
-## What we are showing
-
-Our Phase 1.5 demo lets a visitor write or paste a free-form profile and compare
-it with 100 varied fictional profiles. It processes the complete pool and
-returns three ranked fictional people with source excerpts, text-similarity
-scores, and grounded reasons to talk.
-
-These fictional people cannot be contacted. Our earlier Phase 1 separately
-proves private decisions, mutual consent, a private thread, messaging, and
-third-user protection. The next release combines both parts for real people.
-
-## A distributed computing system built in Jac
-
-JacGrid turns those independent machines into a usable compute service. It
-divides an application job into tasks, runs them on available computers inside
-restricted sandboxes, verifies results, retries failed work, and combines the
-output.
-
-We have validated JacGrid across multiple computers on a local network. It can
-detect a lost worker, move its task, verify the result, and keep an audit trail.
-The current Jack Sparrow demo can run on one server; JacGrid is designed for
-larger jobs from Jack Sparrow and other applications.
-
-The longer-term model is that applications get distributed computing capacity
-while people earn money by sharing spare capacity. Real payments and open
-participation are not built yet; current receipts use simulated TESTUSD.
-
-The name connects both ideas: Jack Sparrow moves between ships to reach his
-destination. Here, computing work moves across a fleet of computers to help a
-person reach theirs—someone worth meeting.
-
-For the hackathon, Jack Sparrow will be shared through JacHammer, and the
-JacGrid coordinator is also intended to run there.
+**profile text → distributed embeddings → ranked matches → LLM explanations**
