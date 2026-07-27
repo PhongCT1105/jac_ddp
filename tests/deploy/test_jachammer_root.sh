@@ -12,9 +12,13 @@ fail() {
 
 [ -x "$JAC" ] || fail "missing Jac executable at $JAC"
 [ -f "$REPO_ROOT/jac.toml" ] || fail "missing root jac.toml"
+[ -f "$REPO_ROOT/main.jac" ] || fail "missing root main.jac"
+[ -L "$REPO_ROOT/main.jac" ] || fail "root main.jac must be a symlink"
 [ -f "$REPO_ROOT/main.sv.jac" ] || fail "missing root main.sv.jac"
 [ -L "$REPO_ROOT/main.sv.jac" ] || fail "root main.sv.jac must be a symlink"
 [ -L "$REPO_ROOT/src" ] || fail "root src must be a symlink"
+[ "$(readlink "$REPO_ROOT/main.jac")" = "platform/coordinator/main.sv.jac" ] \
+    || fail "root main.jac points to an unexpected target"
 [ "$(readlink "$REPO_ROOT/main.sv.jac")" = "platform/coordinator/main.sv.jac" ] \
     || fail "root main.sv.jac points to an unexpected target"
 [ "$(readlink "$REPO_ROOT/src")" = "platform/coordinator/src" ] \
@@ -22,9 +26,9 @@ fail() {
 
 (
     cd "$REPO_ROOT"
-    "$JAC" check main.sv.jac
+    "$JAC" check main.jac
     JACGRID_KEY="$TEST_KEY" JACGRID_HOSTED=1 JACGRID_SELFTEST=1 \
-        "$JAC" run main.sv.jac
+        "$JAC" run main.jac
 )
 
 (
@@ -37,7 +41,7 @@ fail() {
 set +e
 HOSTED_OUTPUT="$(
     cd "$REPO_ROOT"
-    JACGRID_HOSTED=1 JACGRID_KEY= "$JAC" run main.sv.jac 2>&1
+    JACGRID_HOSTED=1 JACGRID_KEY= "$JAC" run main.jac 2>&1
 )"
 HOSTED_STATUS=$?
 set -e
@@ -50,7 +54,7 @@ set +e
 DEFAULT_OUTPUT="$(
     cd "$REPO_ROOT"
     JACGRID_HOSTED=1 JACGRID_KEY=jacgrid-dev-key \
-        "$JAC" run main.sv.jac 2>&1
+        "$JAC" run main.jac 2>&1
 )"
 DEFAULT_STATUS=$?
 set -e

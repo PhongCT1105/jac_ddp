@@ -22,7 +22,7 @@ trap cleanup EXIT
 (
     cd "$REPO_ROOT"
     JACGRID_KEY="$KEY" JACGRID_HOSTED=1 \
-        "$JAC" start main.sv.jac --no_client --port "$PORT"
+        "$JAC" start main.jac --no_client --port "$PORT"
 ) >"$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
 

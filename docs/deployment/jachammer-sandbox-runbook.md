@@ -115,7 +115,7 @@ so inspect the parsed payload even when curl receives HTTP 200.
 ## Troubleshooting
 
 - **Preview/build failure:** confirm the imported branch includes root
-  `jac.toml`, `main.sv.jac`, and `src`; review the JacHammer build output, then
+  `jac.toml`, `main.jac`, and `src`; review the JacHammer build output, then
   push the correction and rerun Preview.
 - **`unauthorized`:** every JacHammer setting, Mac terminal, and curl command
   must use the same newly generated `JACGRID_KEY`; do not use the development

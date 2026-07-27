@@ -1,0 +1,14 @@
+---
+id: demo-085-tanvi-deshmukh
+name: Tanvi Deshmukh
+---
+
+Some weeks my odometer logs more kilometers than my stethoscope logs heartbeats. I run eleven telemedicine points across a district in Maharashtra that looks, on a map, like one shaded block. It isn't. It's eleven roads, eleven monsoon washouts, eleven ways a generator fails at the exact hour a delivery goes wrong. My medical training gets used maybe a third of my working day. The rest is logistics wearing a doctor's coat: which van goes where, whose tablet battery died, which nurse-operator needs me to walk her through a rash over a grainy video call because the specialist she's calling is four hours away.
+
+I didn't plan this life. I finished training expecting a hospital ward and a predictable rotation. A short posting in a primary health center, during a bad staffing shortage, turned into a longer one, and by the second year I'd stopped thinking of it as a posting. There was no single dawn realization, just a slow arithmetic: how many people simply didn't come, how much of "didn't come" was distance rather than disinterest, how a two-hour walk the wrong way from a working road can decide someone's health more than anything I know how to prescribe. Once you see health as a transportation problem as much as a biological one, you can't unsee it.
+
+I have strong, occasionally unpopular opinions about what a screen can and cannot do. A video call is genuinely good for triage and follow-up, for the fifteen-minute conversation that spares someone a needless six-hour trip. It is a poor substitute for a hand on an abdomen, for the things a person doesn't say but a body does. I built our triage protocol mostly by getting it wrong first, and I distrust anyone who arrives with a tidy solution before spending a season watching how a place actually breaks. Contrarily, I also think remote care is underused, not overused — it just needs pairing with someone who knows which cases cannot wait, and that judgment doesn't come from a device.
+
+The contradiction I live with daily: I chose this work to be close to people, and most days I'm closer to a steering wheel than a patient. I've mostly made peace with it by deciding the driving is the work, not the commute to it.
+
+I'm hoping to find people who take systems that touch bodies seriously without romanticizing or dismissing the technical layer underneath — engineers who've sat in an actual clinic and watched their tool get ignored, policy people who know a district budget line by line, other clinicians running something unglamorous where the roads and the signal are both bad. I'm as interested in logistics as in medicine: batteries, cold chains, the last three kilometers. I'd also like to talk to someone who understands being good at a job in a way that has almost nothing to do with what they trained for.

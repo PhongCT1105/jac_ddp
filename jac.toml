@@ -2,7 +2,7 @@
 name = "jacgrid-jachammer-coordinator"
 version = "0.1.0"
 description = "JacGrid public coordinator for JacHammer sandbox deployment"
-entry-point = "main.sv.jac"
+entry-point = "main.jac"
 kind = "api-service"
 
 [serve]
