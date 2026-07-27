@@ -4,7 +4,7 @@
 
 **Goal:** Make the repository directly deployable as a coordinator-only JacHammer sandbox and provide copy-paste tooling to connect local Mac workers through its public HTTPS URL.
 
-**Architecture:** A root Jac API-service project becomes the JacHammer entrypoint. Both the root entrypoint and the existing nested coordinator entrypoint include the same model and service modules, preserving one coordinator implementation while keeping local commands compatible. Shell tooling authenticates against the hosted walker API, then reuses the existing worker and job launchers.
+**Architecture:** A root Jac API-service project becomes the JacHammer entrypoint. Git symlinks expose the existing coordinator entrypoint and its `src` directory at the repository root, so Jac-scale compiles the walkers as the entry module and preserves `walker:pub` metadata without duplicating code. Shell tooling authenticates against the hosted walker API, then reuses the existing worker and job launchers.
 
 **Tech Stack:** Jac 0.16.7, jac-scale 0.2.31, Bash, curl, jq, GitHub/JacHammer sandbox deployment.
 
@@ -27,16 +27,13 @@
 
 **Files:**
 - Create: `jac.toml`
-- Create: `main.sv.jac`
-- Create: `platform/coordinator/src/service.jac`
+- Create symlink: `main.sv.jac` -> `platform/coordinator/main.sv.jac`
+- Create symlink: `src` -> `platform/coordinator/src`
 - Create: `tests/deploy/test_jachammer_root.sh`
 - Modify: `platform/coordinator/main.sv.jac`
-- Modify: `platform/coordinator/src/model.jac`
 
 **Interfaces:**
 - Produces: root API-service entrypoint `main.sv.jac`.
-- Produces: shared coordinator service module
-  `platform.coordinator.src.service`.
 - Produces: `JACGRID_HOSTED=1` fail-closed startup behavior.
 - Preserves: nested commands from `platform/coordinator`, including
   `JACGRID_SELFTEST=1 ../../.venv/bin/jac run main.sv.jac`.
@@ -61,7 +58,13 @@ fail() {
 
 [ -x "$JAC" ] || fail "missing Jac executable at $JAC"
 [ -f "$REPO_ROOT/jac.toml" ] || fail "missing root jac.toml"
-[ -f "$REPO_ROOT/main.sv.jac" ] || fail "missing root main.sv.jac"
+[ -L "$REPO_ROOT/main.sv.jac" ] || fail "root main.sv.jac must be a symlink"
+[ "$(readlink "$REPO_ROOT/main.sv.jac")" = \
+    "platform/coordinator/main.sv.jac" ] \
+    || fail "root main.sv.jac points to the wrong entrypoint"
+[ -L "$REPO_ROOT/src" ] || fail "root src must be a symlink"
+[ "$(readlink "$REPO_ROOT/src")" = "platform/coordinator/src" ] \
+    || fail "root src points to the wrong coordinator source"
 
 (
     cd "$REPO_ROOT"
@@ -106,7 +109,8 @@ echo "[jachammer root test] OK"
 ```
 
 The production change this test catches is a missing/broken root Jac project,
-a nested coordinator regression, or hosted startup accepting an unsafe key.
+a duplicated or misdirected coordinator entrypoint, a nested coordinator
+regression, or hosted startup accepting an unsafe key.
 
 - [ ] **Step 2: Run the test and verify RED**
 
@@ -119,65 +123,26 @@ bash tests/deploy/test_jachammer_root.sh
 Expected: exit non-zero with
 `[jachammer root test] FAIL: missing root jac.toml`.
 
-- [ ] **Step 3: Extract the shared coordinator service**
+- [ ] **Step 3: Add the root entrypoint symlinks**
 
-Move the coordinator helpers, walkers, explanatory comments, and self-test
-entry block from `platform/coordinator/main.sv.jac` into
-`platform/coordinator/src/service.jac`. Add `import os;` at the top because
-the service's hosted guard and self-test read environment variables directly.
+Create Git symlinks:
 
-Do not copy or rename walkers. The nested entrypoint becomes:
-
-```jac
-"""JacGrid coordinator local entrypoint."""
-
-include src.model;
-include src.service;
+```bash
+ln -s platform/coordinator/main.sv.jac main.sv.jac
+ln -s platform/coordinator/src src
 ```
 
-The root entrypoint becomes:
-
-```jac
-"""JacGrid coordinator JacHammer entrypoint."""
-
-::py::
-import platform as _stdlib_platform
-from pathlib import Path as _Path
-_stdlib_platform.__path__ = [
-    str(_Path(__file__).resolve().parent / "platform")
-]
-::py::
-
-include platform.coordinator.src.model;
-include platform.coordinator.src.service;
-```
-
-The inline bridge loads Python's real standard-library `platform` module
-first, preserving APIs used by Jac itself, then makes that loaded module a
-package namespace whose search path includes this repository's `platform/`
-directory. Do not add `platform/__init__.jac`: that would shadow the standard
-library during Jac CLI bootstrap.
-
-Each entrypoint includes the same two modules for Jac's static composition.
-Jac 0.16.7 keeps included modules in separate runtime namespaces, so the
-service must also bind its sibling model symbols at runtime with a stable
-relative Python import:
-
-```jac
-import os;
-
-::py::
-from .model import *
-::py::
-```
-
-Do not use `include model;` in the service: it type-checks through an
-entrypoint but resolves as a top-level module at runtime and fails with
-`No module named 'model'`.
+The symlinks are the deployment adapter. They ensure the hosted entry file is
+at the repository root while Jac-scale compiles the original walker
+definitions directly. Do not replace either symlink with copied source and do
+not move the walkers into an included helper module: jac-scale 0.2.31 exposes
+walkers from such a helper but incorrectly applies JWT security instead of
+their `walker:pub` metadata.
 
 - [ ] **Step 4: Add hosted fail-closed configuration**
 
-In the shared service's `with entry` block, before the existing self-test,
+In `platform/coordinator/main.sv.jac`'s `with entry` block, before the existing
+self-test,
 enforce:
 
 ```jac
@@ -189,29 +154,7 @@ if os.environ.get("JACGRID_HOSTED", "0") == "1" {
 
 Keep the existing self-test body unchanged after this guard.
 
-- [ ] **Step 5: Make repository discovery independent of source depth**
-
-Inside the Python section of `platform/coordinator/src/model.jac`, replace
-both `Path(__file__).resolve().parents[3]` expressions with one helper:
-
-```python
-def _coordinator_repo_root():
-    from pathlib import Path
-
-    for candidate in Path(__file__).resolve().parents:
-        if (
-            (candidate / "sandbox" / "runner" / "registry.jac").is_file()
-            and (candidate / "platform" / "coordinator" / "jac.toml").is_file()
-        ):
-            return str(candidate)
-    raise RuntimeError(
-        "JacGrid repository root not found; sandbox package is missing"
-    )
-```
-
-Both bridge functions call `repo_root = _coordinator_repo_root()`.
-
-- [ ] **Step 6: Add the root Jac project**
+- [ ] **Step 5: Add the root Jac project**
 
 Create root `jac.toml`:
 
@@ -232,10 +175,11 @@ port = 8000
 watchdog = ">=3.0.0"
 ```
 
-- [ ] **Step 7: Validate Jac syntax and run GREEN**
+- [ ] **Step 6: Validate Jac syntax and run GREEN**
 
-Read the complete changed Jac files and call Jac MCP `validate_jac` on each
-entrypoint/module combination. Fix errors using `explain_error`, then rerun:
+Read the complete coordinator program and call Jac MCP `validate_jac` for both
+root and nested entrypoint compositions. Fix errors using `explain_error`,
+then rerun:
 
 ```bash
 bash tests/deploy/test_jachammer_root.sh
@@ -246,6 +190,22 @@ Expected terminal lines include two `[selftest] OK` lines and:
 ```text
 [jachammer root test] OK
 ```
+
+- [ ] **Step 7: Prove root persistence and public walker routing**
+
+Start the root application on an unused port with a non-development key.
+Call `POST /walker/network_status` without a JWT and assert HTTP 200 with the
+report at `.data.reports[0]`. Stop the server and assert:
+
+```bash
+test -f .jac/data/users.db
+test -f .jac/data/anchor_store.db
+test ! -e platform/coordinator/.jac/data/users.db
+test ! -e platform/coordinator/.jac/data/anchor_store.db
+```
+
+This gate proves the symlink retains public-walker metadata and aligns
+Jac-scale auth and graph storage at the root project.
 
 - [ ] **Step 8: Run coordinator regression tests**
 
@@ -262,9 +222,7 @@ Expected: both commands exit 0 and print their `OK` markers.
 
 ```bash
 git add jac.toml main.sv.jac \
-  platform/coordinator/main.sv.jac \
-  platform/coordinator/src/model.jac \
-  platform/coordinator/src/service.jac \
+  src platform/coordinator/main.sv.jac \
   tests/deploy/test_jachammer_root.sh
 git commit -m "Add JacHammer coordinator root project"
 ```
