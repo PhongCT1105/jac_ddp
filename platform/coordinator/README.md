@@ -11,7 +11,24 @@ only mutators. This is its own Jac project (`kind = "api-service"`).
 Reference: `docs/architecture.md` §3 (graph model), §4 (Contract A), §5
 (Contract B), §8 (verification), §9 (payment); `docs/phong-distributed/spec.md`.
 
+For a public HTTPS coordinator with local Mac workers, follow the
+[JacHammer sandbox runbook](../../docs/deployment/jachammer-sandbox-runbook.md).
+
 ## Run
+
+For a JacHammer-equivalent hosted configuration, the root project is the
+deployment entrypoint; the existing nested project remains available locally:
+
+```bash
+# JacHammer-equivalent root project
+JACGRID_KEY=test-key JACGRID_HOSTED=1 \
+  .venv/bin/jac run main.sv.jac
+
+# Existing nested local project
+cd platform/coordinator
+JACGRID_KEY=test-key JACGRID_HOSTED=1 \
+  ../../.venv/bin/jac run main.sv.jac
+```
 
 ```bash
 cd platform/coordinator

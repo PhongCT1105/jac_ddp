@@ -2,6 +2,9 @@
 
 This directory contains repository-level setup, checking, and demo commands. Component-specific scripts belong inside their respective component folders.
 
+For the hosted coordinator workflow that replaces a local-IP connection, see
+[the JacHammer sandbox runbook](../docs/deployment/jachammer-sandbox-runbook.md).
+
 ## Planned Scripts
 
 ### `setup-demo.sh`
