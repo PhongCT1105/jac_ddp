@@ -263,7 +263,7 @@ def new_id(prefix: str) -> str {
 """Stable JSON serialisation used for hashing and equality checks."""
 def canonical(data: any) -> str {
     try {
-        return json.dumps(data, sort_keys=True, separators=(",", ":"), default=lambda o: any : str(o));
+        return json.dumps(data, sort_keys=True, separators=(",", ":"), default=lambda (o: any) { str(o); });
     } except Exception {
         return str(data);
     }
