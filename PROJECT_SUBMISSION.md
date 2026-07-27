@@ -7,10 +7,16 @@ through shared interests, complementary skills, similar values, compatible
 working styles, or a specific problem they both care about. These dimensions
 are difficult to represent with filters or a single similarity score.
 
-We built JackSparrow to combine fast semantic search with qualitative LLM
-analysis. A hackathon is one useful example: participants need to form groups
-early, but often join whoever they already know or happen to meet first. The
-right teammate may be in the same room and still remain undiscovered.
+Most matchmaking products are built around a fixed objective, such as dating,
+hiring, or skill coverage. JackSparrow does not hard-code one definition of a
+good match. The user describes the connection they want in natural language,
+so the same system can help find teammates, collaborators, mentors, friends, or
+people with a shared interest.
+
+We combine fast semantic search with qualitative LLM analysis. A hackathon is
+one useful example: participants need to form groups early, but often join
+whoever they already know or happen to meet first. The right teammate may be in
+the same room and still remain undiscovered.
 
 ## What it does
 
@@ -25,8 +31,8 @@ The process is:
 Embeddings make it practical to retrieve the strongest candidates from the
 complete pool. An LLM then compares the richer meaning in both profiles and
 writes a grounded explanation of the shared or complementary dimensions. This
-combines quantitative retrieval with qualitative analysis instead of treating
-human connection as one score.
+combines quantitative retrieval with qualitative analysis instead of forcing
+every kind of human connection into one predefined optimization function.
 
 ## How we built it
 
