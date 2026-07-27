@@ -48,7 +48,9 @@ test "fallback hash embedding matches the independently-computed golden fixture"
         golden = expected_by_id[it["id"]] as list[float];
         assert len(actual) == 384;
         sim = _cosine(actual, golden);
-        assert sim > 0.999999, f"fallback embedding for {it['id']} drifted from golden fixture (cosine={sim})";
+        assert sim > 0.999999 , f"fallback embedding for {it[
+            'id'
+        ]} drifted from golden fixture (cosine={sim})";
     }
 }
 
@@ -71,7 +73,11 @@ test "run_task rejects an empty items list" {
 
 
 test "run_task rejects an item missing required fields" {
-    task = {"task_id": "t-bad-item", "job_type": "embedding", "payload": {"items": [{"id": "only-id"}]}};
+    task = {
+        "task_id": "t-bad-item",
+        "job_type": "embedding",
+        "payload": {"items": [{"id": "only-id"}]}
+    };
     result = run_task(task);
     assert result["status"] == "error";
     assert result["error"]["code"] == "invalid_item";
@@ -94,10 +100,20 @@ test "run_task produces a contract-shaped result envelope with 384-d embeddings"
     }
 
     execution = result["execution"] as dict[str, any];
-    for key in ["runtime", "started_at", "finished_at", "peak_memory_mb", "cpu_seconds", "exit_code"] {
-        assert key in execution, f"execution block missing required key '{key}'";
+    for key in [
+        "runtime",
+        "started_at",
+        "finished_at",
+        "peak_memory_mb",
+        "cpu_seconds",
+        "exit_code"
+    ] {
+        assert key in execution , f"execution block missing required key '{key}'";
     }
-    assert execution["runtime"] in ["connection-embedding:1.0.0", "connection-embedding-fallback:1.0.0"];
+    assert execution["runtime"] in [
+        "connection-embedding:1.0.0",
+        "connection-embedding-fallback:1.0.0"
+    ];
     assert execution["exit_code"] == 0;
 }
 
@@ -112,7 +128,9 @@ test "file output carries only application results plus reserved runtime provena
     assert "status" not in file_output;
     assert "execution" not in file_output;
     assert "__jacgrid_execution" in file_output;
-    assert file_output["__jacgrid_execution"]["runtime"] == result["execution"]["runtime"];
+    assert file_output["__jacgrid_execution"]["runtime"] == result["execution"][
+        "runtime"
+    ];
 }
 
 
@@ -133,7 +151,9 @@ test "primary model path matches the golden fixture within verification toleranc
         for r in results {
             golden = expected_by_id[r["id"]] as list[float];
             sim = _cosine(r["embedding"] as list[float], golden);
-            assert sim >= 0.999, f"embedding for {r['id']} outside verification tolerance (cosine={sim})";
+            assert sim >= 0.999 , f"embedding for {r[
+                'id'
+            ]} outside verification tolerance (cosine={sim})";
         }
     }
 }

@@ -8,9 +8,9 @@ import from src.contracts.models {
     ProfileRevision
 }
 
-glob WORKLOAD_VERSION: str = "0.1.0";
-glob WORKLOAD_ARTIFACT_SHA256: str = (
-         "sha256:d681e8a394df13cc28fb809dc5a1f66f4b66310bb42e259adb9a344d87fcc070"
+glob WORKLOAD_VERSION: str = "1.0.0",
+     WORKLOAD_ARTIFACT_SHA256: str = (
+         "sha256:53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db"
      );
 
 

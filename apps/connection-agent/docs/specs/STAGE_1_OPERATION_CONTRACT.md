@@ -141,8 +141,19 @@ provider stack traces.
 - Alice receives a card about Bob; Bob receives a distinct card about Alice.
 - `carol_designer` is the unauthorized third actor for thread tests.
 - At least 30 eligible synthetic profiles participate in whole-pool retrieval.
-- The exact immutable `connection-embedding` workload `0.1.0` runs through
-  `MockJacGrid` by default.
+- The exact immutable `connection-embedding` workload `1.0.0` runs through
+  `MockJacGrid` by default. It produces 384-dimensional vectors through the
+  pinned MiniLM runtime or its separately tagged deterministic fallback.
+
+### Integration amendment
+
+The Stage 1 branches originally targeted the dependency-free
+`connection-embedding` `0.1.0` foundation fixture. The accepted JacGrid
+integration introduced the application-owned `1.0.0` file-I/O package used by
+the live sandbox. Consolidation upgraded `MockJacGrid` to invoke and validate
+that same package instead of restoring or duplicating the old algorithm. This
+changes workload identity and vector dimensions only; the frozen application
+operations, privacy rules, idempotency, and ownership boundaries are unchanged.
 
 Web may build a scripted, contract-valid fixture client that returns these exact
 shapes while branches are isolated. That fixture proves rendering and

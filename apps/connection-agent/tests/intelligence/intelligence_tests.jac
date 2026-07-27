@@ -48,7 +48,7 @@ test "whole pool retrieval consumes all recombined workload projections" {
     candidates = rank_candidates_from_result(alice, profiles, result);
     assert len(candidates) == 30;
     assert candidates[0].actor_id == "bob_researcher";
-    assert result.workload_version == "0.1.0";
+    assert result.workload_version == "1.0.0";
     assert result.states[-1] == "complete";
 }
 
@@ -316,7 +316,7 @@ test "unsupported one-sided and stale evidence fails grounding validation" {
         ],
         left_revision_id=alice.revision_id,
         right_revision_id=bob.revision_id,
-        workload_version="0.1.0",
+        workload_version="1.0.0",
         artifact_sha256="",
         result_sha256="",
     );
@@ -352,7 +352,7 @@ test "unsupported one-sided and stale evidence fails grounding validation" {
         ],
         left_revision_id=alice.revision_id,
         right_revision_id=carol.revision_id,
-        workload_version="0.1.0",
+        workload_version="1.0.0",
         artifact_sha256="",
         result_sha256="",
     );

@@ -16,17 +16,9 @@ def workload_dir -> str {
 
 def valid_output(item_ids: list[str]) -> dict[str, any] {
     return {
-        "contract_version": 1,
-        "model": {
-            "id": "fixture-token-hash",
-            "revision": "fixture-token-hash-v1",
-            "artifact_sha256": "sha256:d681e8a394df13cc28fb809dc5a1f66f4b66310bb42e259adb9a344d87fcc070",
-
-        },
-        "dimensions": 16,
-        "normalized": True,
+        "__jacgrid_execution": {"runtime": "connection-embedding-fallback:1.0.0"},
         "results": [
-            {"id": item_id, "embedding": [1.0] + [0.0 for _index in range(15)]}
+            {"id": item_id, "embedding": [1.0] + [0.0 for _index in range(383)]}
             for item_id in item_ids
         ],
 
@@ -104,8 +96,8 @@ test "mock jacgrid invokes every chunk and returns complete manifest-pinned resu
     assert mock.invocation_count == 2;
     assert result.states == ["queued", "running", "verifying", "complete"];
     assert list(result.vectors.keys()) == ["revision_a", "revision_b", "revision_c"];
-    assert result.workload_version == "0.1.0";
-    assert result.artifact_sha256 == "sha256:d681e8a394df13cc28fb809dc5a1f66f4b66310bb42e259adb9a344d87fcc070";
+    assert result.workload_version == "1.0.0";
+    assert result.artifact_sha256 == "sha256:53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db";
     assert result.result_sha256.startswith("sha256:");
 }
 
@@ -136,10 +128,10 @@ test "validator rejects ordered identity and numeric boundary violations" {
         assert str(error) == "invalid_result_order";
     }
     output = valid_output(["revision_a"]);
-    output["model"]["revision"] = "wrong";
+    output["__jacgrid_execution"]["runtime"] = "unapproved-runtime:1.0.0";
     try {
         _ = validate_workload_result(output, ["revision_a"], descriptor);
-        assert False , "model mismatch must fail";
+        assert False , "runtime identity mismatch must fail";
     } except ValueError as error {
         assert str(error) == "workload_identity_mismatch";
     }

@@ -87,11 +87,11 @@ click_selector '#confirm-profile'
 assert_focus "Profile confirmed"
 click_selector '#show-suggestion'
 assert_snapshot "Bob Researcher"
-assert_snapshot "Shared interest in thoughtful technical collaboration"
+assert_snapshot "Bob Researcher also mentions distributed systems."
 assert_focus "Bob Researcher"
 click_selector '#open-interest'
 assert_snapshot "Your response is private."
-assert_snapshot "Bob Researcher could be a thoughtful connection for Alice Builder"
+assert_snapshot "Bob Researcher: a grounded connection"
 assert_focus "Thanks for letting us know"
 if jac browse -s "${smoke_session}" snapshot | grep -Fq "It’s a match"; then
   echo "Alice's one-sided open leaked a match." >&2
@@ -105,11 +105,11 @@ click_selector '#show-suggestion'
 assert_snapshot "Alice Builder"
 click_selector '#open-interest'
 assert_snapshot "It’s a match"
-assert_snapshot "Alice Builder could be a thoughtful connection for Bob Researcher"
+assert_snapshot "Alice Builder: a grounded connection"
 assert_focus "It’s a match"
 click_selector '#open-thread'
 assert_focus "Private human conversation"
-assert_snapshot "Alice Builder could be a thoughtful connection for Bob Researcher"
+assert_snapshot "Alice Builder: a grounded connection"
 jac browse -s "${smoke_session}" fill '#message' 'Hi Alice' >/dev/null
 click_selector '#send-message'
 assert_snapshot "Hi Alice"

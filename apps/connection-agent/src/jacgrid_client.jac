@@ -23,33 +23,32 @@ import math;
 import hashlib;
 import requests;
 
-def coordinator_http_session() -> any {
+def coordinator_http_session -> any {
     session = requests.Session();
     session.trust_env = False;
     return session;
 }
 
-glob JACGRID_COORDINATOR: str = os.environ.get("JACGRID_COORDINATOR", "http://127.0.0.1:8000");
-glob JACGRID_SECRET: str = os.environ.get("JACGRID_KEY", "jacgrid-dev-key");
-glob COORDINATOR_HTTP: any = coordinator_http_session();
+glob JACGRID_COORDINATOR: str = os.environ.get(
+         "JACGRID_COORDINATOR", "http://127.0.0.1:8000"
+     ),
+     JACGRID_SECRET: str = os.environ.get("JACGRID_KEY", "jacgrid-dev-key"),
+     COORDINATOR_HTTP: any = coordinator_http_session(),
+     EMBED_DIM: int = 384,
+     MOCK_WORKERS: list[str] = ["mac1", "mac2", "mac3"],
+     MOCK_PRICE_PER_TASK: float = 0.10,
+     MOCK_CURRENCY: str = "TESTUSD",
+     PY_ROUND: any = round,
+     MOCK_JOBS: dict[str, dict[str, any]] = {},
+     ST_MODEL: dict[str, any] = {"loaded": False, "model": None, "available": None};
 
-glob EMBED_DIM: int = 384;
-glob MOCK_WORKERS: list[str] = ["mac1", "mac2", "mac3"];
-glob MOCK_PRICE_PER_TASK: float = 0.10;
-glob MOCK_CURRENCY: str = "TESTUSD";
 
 # Python's two-arg `round` through an `any` alias — the 0.16 checker cannot
 # resolve the two-argument `round` overload (E1054). Same workaround used
 # in platform/coordinator/src/model.jac and workloads/connection-embedding.
-glob PY_ROUND: any = round;
 
 # In-process store of mock job state, keyed by job_id. Persists for the
 # life of the `jac start` server process.
-glob MOCK_JOBS: dict[str, dict[str, any]] = {};
-
-glob ST_MODEL: dict[str, any] = {"loaded": False, "model": None, "available": None};
-
-
 def _round_to(value: float, digits: int) -> float {
     return PY_ROUND(value, digits) as float;
 }
@@ -84,7 +83,7 @@ def _hash_embed(text: str) -> list[float] {
 
 
 """Cheap one-time check: does sentence-transformers import cleanly?"""
-def _st_available() -> bool {
+def _st_available -> bool {
     cached = ST_MODEL["available"];
     if cached is not None {
         return cached as bool;
@@ -128,7 +127,6 @@ def embed_text(text: str) -> list[float] {
 obj JacGridClient {
     """Interface. Both implementations provide these three methods with
     exactly these signatures and exactly Contract A §4 dict shapes."""
-
     def submit_embedding_job(_items: list[dict[str, any]]) -> str {
         return "";
     }
@@ -144,7 +142,6 @@ obj JacGridClient {
 
 
 obj MockJacGrid(JacGridClient) {
-
     override def submit_embedding_job(items: list[dict[str, any]]) -> str {
         job_id = "job-" + hashlib.sha256(
             (str(len(MOCK_JOBS)) + str(len(items)) + str(id(items))).encode("utf-8")
@@ -155,17 +152,18 @@ obj MockJacGrid(JacGridClient) {
         task_ids = ["t-1", "t-2", "t-3", "t-4"];
         tasks: list[dict[str, str]] = [];
         for i in range(len(task_ids)) {
-            tasks.append({
-                "task_id": task_ids[i],
-                "worker": MOCK_WORKERS[i % len(MOCK_WORKERS)],
-            });
+            tasks.append(
+                {"task_id": task_ids[i], "worker": MOCK_WORKERS[i % len(MOCK_WORKERS)],}
+            );
         }
 
         # Mock "runs" synchronously; progress simulation only affects what
         # poll()/fetch_results() reveal and when.
         results: list[dict[str, any]] = [];
         for item in items {
-            results.append({"id": item["id"], "embedding": embed_text(item["text"] as str)});
+            results.append(
+                {"id": item["id"], "embedding": embed_text(item["text"] as str)}
+            );
         }
 
         payments: list[dict[str, any]] = [];
@@ -173,12 +171,17 @@ obj MockJacGrid(JacGridClient) {
         for t in tasks {
             amount = MOCK_PRICE_PER_TASK;
             total_paid += amount;
-            payments.append({
-                "task_id": t["task_id"],
-                "worker": t["worker"],
-                "amount": amount,
-                "tx": "0xmock" + hashlib.sha256((job_id + t["task_id"]).encode("utf-8")).hexdigest()[:12],
-            });
+            payments.append(
+                {
+                    "task_id": t["task_id"],
+                    "worker": t["worker"],
+                    "amount": amount,
+                    "tx": "0xmock" + hashlib.sha256(
+                        (job_id + t["task_id"]).encode("utf-8")
+                    ).hexdigest()[:12],
+
+                }
+            );
         }
 
         MOCK_JOBS[job_id] = {
@@ -191,7 +194,9 @@ obj MockJacGrid(JacGridClient) {
                 "verified": len(tasks),
                 "total_paid": _round_to(total_paid, 2),
                 "payments": payments,
+
             },
+
         };
         return job_id;
     }
@@ -229,12 +234,15 @@ obj MockJacGrid(JacGridClient) {
         for i in range(len(tasks)) {
             t = tasks[i];
             st = statuses[i % len(statuses)];
-            out_tasks.append({
-                "task_id": t["task_id"],
-                "status": st,
-                "worker": t["worker"],
-                "paid": st == "complete",
-            });
+            out_tasks.append(
+                {
+                    "task_id": t["task_id"],
+                    "status": st,
+                    "worker": t["worker"],
+                    "paid": st == "complete",
+
+                }
+            );
         }
 
         return {
@@ -242,6 +250,7 @@ obj MockJacGrid(JacGridClient) {
             "status": status,
             "tasks": out_tasks,
             "progress": progress,
+
         };
     }
 
@@ -254,6 +263,7 @@ obj MockJacGrid(JacGridClient) {
             "job_id": job_id,
             "results": job["results"],
             "receipt": job["receipt"],
+
         };
     }
 }
@@ -262,21 +272,20 @@ obj MockJacGrid(JacGridClient) {
 obj LiveJacGrid(JacGridClient) {
     """Real HTTP calls against the coordinator (Phong's platform/coordinator),
     built to Contract A. Integration-tested against the real coordinator."""
-
     override def submit_embedding_job(items: list[dict[str, any]]) -> str {
         body = {
             "secret": JACGRID_SECRET,
             "app_id": "matching-app",
             "job_type": "embedding",
-            "payload": {
-                "model": "all-MiniLM-L6-v2",
-                "items": items,
-            },
+            "payload": {"model": "all-MiniLM-L6-v2", "items": items,},
             "partitioning": {"strategy": "chunk", "chunk_size": 25},
             "verification": {"method": "recompute_sample", "sample_rate": 0.1},
             "budget": {"max_total": 3.0, "price_per_task": 0.10, "currency": "TESTUSD"},
+
         };
-        resp = COORDINATOR_HTTP.post(JACGRID_COORDINATOR + "/walker/create_job", json=body, timeout=30);
+        resp = COORDINATOR_HTTP.post(
+            JACGRID_COORDINATOR + "/walker/create_job", json=body, timeout=30
+        );
         data = resp.json() as dict[str, any];
         rep = _unwrap(data);
         return str(rep.get("job_id", ""));
@@ -284,14 +293,18 @@ obj LiveJacGrid(JacGridClient) {
 
     override def poll(job_id: str) -> dict[str, any] {
         body = {"secret": JACGRID_SECRET, "job_id": job_id};
-        resp = COORDINATOR_HTTP.post(JACGRID_COORDINATOR + "/walker/get_job", json=body, timeout=30);
+        resp = COORDINATOR_HTTP.post(
+            JACGRID_COORDINATOR + "/walker/get_job", json=body, timeout=30
+        );
         data = resp.json() as dict[str, any];
         return _unwrap(data);
     }
 
     override def fetch_results(job_id: str) -> dict[str, any] {
         body = {"secret": JACGRID_SECRET, "job_id": job_id};
-        resp = COORDINATOR_HTTP.post(JACGRID_COORDINATOR + "/walker/get_job_result", json=body, timeout=30);
+        resp = COORDINATOR_HTTP.post(
+            JACGRID_COORDINATOR + "/walker/get_job_result", json=body, timeout=30
+        );
         data = resp.json() as dict[str, any];
         return _unwrap(data);
     }
@@ -319,7 +332,7 @@ def _unwrap(data: dict[str, any]) -> dict[str, any] {
 
 
 """Selects the implementation per JACGRID_MODE ('mock' default)."""
-def get_client() -> JacGridClient {
+def get_client -> JacGridClient {
     mode = os.environ.get("JACGRID_MODE", "mock");
     if mode == "live" {
         return LiveJacGrid();

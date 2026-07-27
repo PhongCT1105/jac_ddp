@@ -5,16 +5,20 @@ import json;
 import math;
 import os;
 import subprocess;
+import tempfile;
 import from src.contracts.models { EmbeddingBatchResult, EmbeddingItem }
 
 
 obj WorkloadDescriptor {
     has workload_id: str,
         workload_version: str,
+        entrypoint: str,
         model_id: str,
         model_revision: str,
         artifact_sha256: str,
-        tolerance: float;
+        tolerance: float,
+        dimensions: int,
+        runtime_tags: list[str];
 }
 
 
@@ -32,22 +36,34 @@ def load_workload_descriptor(workload_dir: str) -> WorkloadDescriptor {
         manifest = json.loads(open(os.path.join(workload_dir, "workload.json")).read());
         model = manifest.get("model");
         verification = manifest.get("verification");
-        if manifest.get("contract_version") != 1
-        or manifest.get("id") != "connection-embedding"
-        or manifest.get("version") != "0.1.0"
-        or manifest.get("entrypoint") != ["jac", "run", "src/main.jac"]
+        if manifest.get("name") != "connection-embedding"
+        or manifest.get("version") != "1.0.0"
+        or manifest.get("entrypoint") != "src/embed.jac"
+        or manifest.get("job_type") != "embedding"
+        or manifest.get("runtime") != "jac"
         or not isinstance(model, dict)
         or not isinstance(verification, dict) {
             raise ValueError("invalid_workload_descriptor");
         }
-        model_id = model.get("id");
+        model_id = model.get("name");
         model_revision = model.get("revision");
-        artifact_sha256 = model.get("artifact_sha256");
-        tolerance = verification.get("numeric_tolerance");
+        artifact_sha256 = model.get("artifact_hash");
+        dimensions = model.get("embedding_dim");
+        tolerance = verification.get("tolerance");
+        runtime_tags = manifest.get("runtime_tags");
         if not isinstance(model_id, str)
         or not isinstance(model_revision, str)
         or not isinstance(artifact_sha256, str)
-        or verification.get("normalized") is not True
+        or not isinstance(dimensions, int)
+        or isinstance(dimensions, bool)
+        or dimensions != 384
+        or not isinstance(runtime_tags, list)
+        or runtime_tags != [
+            "connection-embedding:1.0.0",
+            "connection-embedding-fallback:1.0.0",
+
+        ]
+        or not str(model.get("normalization", "")).startswith("L2")
         or isinstance(tolerance, bool)
         or not isinstance(tolerance, (int, float))
         or not math.isfinite(float(tolerance))
@@ -58,10 +74,13 @@ def load_workload_descriptor(workload_dir: str) -> WorkloadDescriptor {
         return WorkloadDescriptor(
             workload_id="connection-embedding",
             workload_version=manifest.get("version") as str,
+            entrypoint=manifest.get("entrypoint") as str,
             model_id=model_id,
             model_revision=model_revision,
             artifact_sha256=artifact_sha256,
             tolerance=float(tolerance),
+            dimensions=dimensions,
+            runtime_tags=[str(tag) for tag in runtime_tags],
         );
     } except ValueError as error {
         if str(error) == "invalid_workload_descriptor" {
@@ -77,16 +96,9 @@ def load_workload_descriptor(workload_dir: str) -> WorkloadDescriptor {
 def validate_workload_result(
     output: dict[str, any], expected_ids: list[str], descriptor: WorkloadDescriptor,
 ) -> dict[str, list[float]] {
-    if output.get("contract_version") != 1
-    or output.get("dimensions") != 16
-    or output.get("normalized") is not True {
-        raise ValueError("malformed_workload_result");
-    }
-    model = output.get("model");
-    if not isinstance(model, dict)
-    or model.get("id") != descriptor.model_id
-    or model.get("revision") != descriptor.model_revision
-    or model.get("artifact_sha256") != descriptor.artifact_sha256 {
+    execution = output.get("__jacgrid_execution");
+    if not isinstance(execution, dict)
+    or execution.get("runtime") not in descriptor.runtime_tags {
         raise ValueError("workload_identity_mismatch");
     }
     raw_results = output.get("results");
@@ -106,7 +118,7 @@ def validate_workload_result(
         if not isinstance(embedding, list) {
             raise ValueError("malformed_workload_result");
         }
-        if len(embedding) != 16 {
+        if len(embedding) != descriptor.dimensions {
             raise ValueError("wrong_vector_dimension");
         }
         vector: list[float] = [];
@@ -131,24 +143,43 @@ def validate_workload_result(
 
 
 def invoke_workload(workload_dir: str, items: list[EmbeddingItem]) -> dict[str, any] {
-    payload: dict[str, any] = {
-        "contract_version": 1,
-        "items": [{"id": item.item_id, "text": item.text} for item in items],
-
-    };
     try {
-        completed = subprocess.run(
-            ["jac", "run", "src/main.jac"],
-            cwd=workload_dir,
-            input=json.dumps(payload),
-            text=True,
-            capture_output=True,
-            check=False,
-        );
-        if completed.returncode != 0 {
-            raise RuntimeError("embedding_failed");
+        descriptor: WorkloadDescriptor = load_workload_descriptor(workload_dir);
+        task: dict[str, any] = {
+            "task_id": "mock-task",
+            "job_type": "embedding",
+            "payload": {
+                "model": descriptor.model_id,
+                "items": [{"id": item.item_id, "text": item.text} for item in items],
+
+            },
+
+        };
+        with tempfile.TemporaryDirectory(prefix="connection-agent-mock-") as workdir {
+            with open(os.path.join(workdir, "task.json"), "w") as task_file {
+                json.dump(task, task_file, sort_keys=True);
+            }
+            environment = os.environ.copy();
+            environment["JACGRID_WORKDIR"] = workdir;
+            if os.environ.get("JACGRID_USE_ST", "0") != "1" {
+                environment["CONNECTION_EMBEDDING_FORCE_FALLBACK"] = "1";
+            }
+            completed = subprocess.run(
+                ["jac", "run", descriptor.entrypoint],
+                cwd=workload_dir,
+                env=environment,
+                text=True,
+                capture_output=True,
+                check=False,
+            );
+            result_path: str = os.path.join(workdir, "result.json");
+            if completed.returncode != 0 or not os.path.isfile(result_path) {
+                raise RuntimeError("embedding_failed");
+            }
+            with open(result_path, "r") as result_file {
+                return json.load(result_file) as dict[str, any];
+            }
         }
-        return json.loads(completed.stdout) as dict[str, any];
     } except RuntimeError as error {
         if str(error) == "embedding_failed" {
             raise error;

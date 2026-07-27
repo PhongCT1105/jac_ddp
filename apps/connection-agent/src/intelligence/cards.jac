@@ -94,7 +94,7 @@ def theme_from_evidence(evidence: str) -> str | None {
 def grounded_assessment(
     left: ProfileRevision,
     right: ProfileRevision,
-    workload_version: str = "0.1.0",
+    workload_version: str = "1.0.0",
     artifact_sha256: str = "",
     result_sha256: str = "",
 ) -> GroundedAssessment {
@@ -336,7 +336,7 @@ def fixture_suggestion(
         evidence_provenance=fixture_provenance(viewer, subject, assessment),
         left_revision_id=viewer.revision_id,
         right_revision_id=subject.revision_id,
-        workload_version="0.1.0",
+        workload_version="1.0.0",
         artifact_sha256="",
         result_sha256="",
     );

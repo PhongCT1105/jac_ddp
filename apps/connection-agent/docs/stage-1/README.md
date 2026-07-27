@@ -12,5 +12,25 @@ Each implementation session receives exactly one handoff:
 | Product Experience | `/Users/sebastian/dev/jac_ddp-product-experience` | `agent/product-experience` | [`handoffs/03_PRODUCT_EXPERIENCE.md`](handoffs/03_PRODUCT_EXPERIENCE.md) |
 | Evaluation and Quality | `/Users/sebastian/dev/jac_ddp-evaluation-quality` | `agent/evaluation-quality` | [`handoffs/04_EVALUATION_QUALITY.md`](handoffs/04_EVALUATION_QUALITY.md) |
 
-The primary checkout `/Users/sebastian/dev/jac_ddp` stays on `main` and is not
-an implementation session. It is reserved for later consolidation.
+The five lanes have been consolidated in the primary checkout on `main`.
+Core, Data and Integrations, Intelligence and Workload, Product Experience,
+and Evaluation and Quality all have implementation specifications and handoff
+reports under `docs/specs/stage-1/`.
+
+Run the complete integrated gate from the repository root:
+
+```bash
+./apps/connection-agent/scripts/check.sh --stage-1-integrated
+```
+
+Run the browser product locally with:
+
+```bash
+./apps/connection-agent/web/start.sh
+```
+
+Run the concise deterministic product evaluation with:
+
+```bash
+./apps/connection-agent/evals/check.sh
+```

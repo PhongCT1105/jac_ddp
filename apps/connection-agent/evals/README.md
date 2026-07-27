@@ -1,5 +1,13 @@
-# Evaluation laboratory
+# Stage 1 evaluation
 
-Reserved for synthetic personas, scenario definitions, deterministic invariants, qualitative rubrics, regression reports, and production-isolation checks.
+Run the deterministic, offline Stage 1 product evaluation with:
 
-The foundation fixtures live in the application adapter until the Evaluation and Quality objective promotes them into the laboratory format.
+```bash
+./apps/connection-agent/evals/check.sh
+```
+
+The scenario calls only the released `DemoApp` operation façade. It verifies
+the reciprocal Alice/Bob journey, whole-pool embedding recombination, private
+one-sided interest, idempotent matching and messaging, Carol's authorization
+denials, and isolation between demo instances. Its report contains only stable
+invariant names and safe fixture IDs.

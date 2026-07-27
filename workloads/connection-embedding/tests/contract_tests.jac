@@ -1,15 +1,16 @@
 import json;
-import from src.embedding { embed_payload }
+import from src.embed { EMBED_DIM, RUNTIME_FALLBACK, RUNTIME_PRIMARY, run_task }
 
 
-test "manifest and schemas are valid JSON" {
+test "manifest and schemas describe the released 384-dimensional workload" {
     with open("workload.json", "r") as manifest_file {
         manifest = json.load(manifest_file) as dict[str, any];
     }
-    assert manifest["contract_version"] == 1;
-    assert manifest["id"] == "connection-embedding";
-    assert manifest["version"] == "0.1.0";
-    assert manifest["model"]["revision"] == "fixture-token-hash-v1";
+    assert manifest["name"] == "connection-embedding";
+    assert manifest["version"] == "1.0.0";
+    assert manifest["entrypoint"] == "src/embed.jac";
+    assert manifest["model"]["embedding_dim"] == EMBED_DIM;
+    assert manifest["runtime_tags"] == [RUNTIME_PRIMARY, RUNTIME_FALLBACK];
 
     with open("schemas/input.schema.json", "r") as input_schema_file {
         input_schema = json.load(input_schema_file) as dict[str, any];
@@ -17,33 +18,37 @@ test "manifest and schemas are valid JSON" {
     with open("schemas/output.schema.json", "r") as output_schema_file {
         output_schema = json.load(output_schema_file) as dict[str, any];
     }
-    assert input_schema["properties"]["contract_version"]["const"] == 1;
-    assert output_schema["properties"]["dimensions"]["const"] == 16;
+    required_fields = input_schema["required"] as list[str];
+    assert "payload" in required_fields;
+    assert output_schema["properties"]["results"]["items"]["properties"]["embedding"][
+        "minItems"
+    ] == EMBED_DIM;
 }
 
 
-test "valid fixture executes through workload contract" {
-    with open("fixtures/valid/two-items.json", "r") as fixture_file {
-        payload = json.load(fixture_file) as dict[str, any];
+test "released fixture executes through the workload contract" {
+    with open("tests/fixtures/task-embedding.json", "r") as fixture_file {
+        task = json.load(fixture_file) as dict[str, any];
     }
-    output: dict[str, any] = embed_payload(payload);
-    results = output["results"] as list[dict[str, any]];
-    assert len(results) == 2;
-    assert len(results[0]["embedding"] as list[float]) == 16;
-    assert len(results[1]["embedding"] as list[float]) == 16;
+    result: dict[str, any] = run_task(task);
+    assert result["status"] == "ok";
+    assert result["error"] is None;
+    results = result["output"]["results"] as list[dict[str, any]];
+    assert len(results) == 3;
+    assert len(results[0]["embedding"] as list[float]) == EMBED_DIM;
+    assert result["execution"]["runtime"] in [RUNTIME_PRIMARY, RUNTIME_FALLBACK];
 }
 
 
-test "invalid fixture fails with declared code" {
-    with open("fixtures/invalid/duplicate-id.json", "r") as fixture_file {
-        fixture = json.load(fixture_file) as dict[str, any];
-    }
-    expected_error: str = fixture["expected_error"] as str;
-    payload = fixture["input"] as dict[str, any];
-    try {
-        _ = embed_payload(payload);
-        assert False , "invalid fixture must fail";
-    } except ValueError as error {
-        assert str(error) == expected_error;
-    }
+test "invalid item fails with a safe workload error" {
+    result: dict[str, any] = run_task(
+        {
+            "task_id": "invalid-item",
+            "job_type": "embedding",
+            "payload": {"items": [{"id": "missing-text"}]},
+
+        }
+    );
+    assert result["status"] == "error";
+    assert result["error"]["code"] == "invalid_item";
 }

@@ -42,12 +42,12 @@ import math;
 import resource;
 import from datetime { datetime, timezone }
 
-glob MODEL_NAME: str = "all-MiniLM-L6-v2";
-glob MODEL_REVISION: str = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41";
-glob EMBED_DIM: int = 384;
-glob RUNTIME_PRIMARY: str = "connection-embedding:1.0.0";
-glob RUNTIME_FALLBACK: str = "connection-embedding-fallback:1.0.0";
-glob RESERVED_EXECUTION_METADATA_FIELD: str = "__jacgrid_execution";
+glob MODEL_NAME: str = "all-MiniLM-L6-v2",
+     MODEL_REVISION: str = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+     EMBED_DIM: int = 384,
+     RUNTIME_PRIMARY: str = "connection-embedding:1.0.0",
+     RUNTIME_FALLBACK: str = "connection-embedding-fallback:1.0.0",
+     RESERVED_EXECUTION_METADATA_FIELD: str = "__jacgrid_execution";
 
 # Task limits declare `network: "none"` (Contract B) — force huggingface_hub
 # to serve the pinned revision straight from the local cache and skip its
@@ -58,15 +58,18 @@ with entry {
     os.environ.setdefault("TRANSFORMERS_OFFLINE", "1");
 }
 
-glob _MODEL_CACHE: dict[str, any] = {"model": None, "loaded": False, "available": None};
+glob _MODEL_CACHE: dict[str, any] = {
+         "model": None,
+         "loaded": False,
+         "available": None
+     },
+     PY_ROUND: any = round;
+
 
 # Python's two-arg `round` through an `any` alias: the 0.16 checker cannot
 # resolve the two-argument `round` overload (E1054) — same workaround as
 # platform/coordinator/src/model.jac's round_to.
-glob PY_ROUND: any = round;
-
-
-def _now_iso() -> str {
+def _now_iso -> str {
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ");
 }
 
@@ -103,7 +106,11 @@ def _hash_embed(text: str) -> list[float] {
 
 """One-time check: does sentence-transformers import cleanly in this
 environment?"""
-def _model_available() -> bool {
+def _model_available -> bool {
+    if os.environ.get("CONNECTION_EMBEDDING_FORCE_FALLBACK", "0") == "1" {
+        _MODEL_CACHE["available"] = False;
+        return False;
+    }
     cached = _MODEL_CACHE["available"];
     if cached is not None {
         return cached as bool;
@@ -118,10 +125,12 @@ def _model_available() -> bool {
 }
 
 
-def _load_model() -> any {
+def _load_model -> any {
     if not _MODEL_CACHE["loaded"] {
         import from sentence_transformers { SentenceTransformer }
-        _MODEL_CACHE["model"] = SentenceTransformer(MODEL_NAME, revision=MODEL_REVISION);
+        _MODEL_CACHE["model"] = SentenceTransformer(
+            MODEL_NAME, revision=MODEL_REVISION
+        );
         _MODEL_CACHE["loaded"] = True;
     }
     return _MODEL_CACHE["model"];
@@ -147,15 +156,21 @@ def embed_items(items: list[dict[str, any]]) -> dict[str, any] {
             }
             return {"results": results, "runtime": RUNTIME_PRIMARY};
         } except Exception as e {
-            print(f"connection-embedding: model path failed, using deterministic fallback: {e}");
+            print(
+                f"connection-embedding: model path failed, using deterministic fallback: {e}"
+            );
         }
     }
-    results = [{"id": it["id"], "embedding": _hash_embed(it["text"] as str)} for it in items];
+    results = [
+        {"id": it["id"], "embedding": _hash_embed(it["text"] as str)} for it in items
+    ];
     return {"results": results, "runtime": RUNTIME_FALLBACK};
 }
 
 
-def _error_result(task_id: str, started: str, code: str, message: str) -> dict[str, any] {
+def _error_result(
+    task_id: str, started: str, code: str, message: str
+) -> dict[str, any] {
     return {
         "task_id": task_id,
         "status": "error",
@@ -167,8 +182,10 @@ def _error_result(task_id: str, started: str, code: str, message: str) -> dict[s
             "peak_memory_mb": 0,
             "cpu_seconds": 0.0,
             "exit_code": 1,
+
         },
         "error": {"code": code, "message": message},
+
     };
 }
 
@@ -183,18 +200,29 @@ def run_task(task: dict[str, any]) -> dict[str, any] {
     start_cpu = time.process_time() as float;
 
     if job_type != "embedding" {
-        return _error_result(task_id, started, "unsupported_job_type",
-            f"connection-embedding only handles job_type=embedding, got '{job_type}'");
+        return _error_result(
+            task_id,
+            started,
+            "unsupported_job_type",
+            f"connection-embedding only handles job_type=embedding, got '{job_type}'"
+        );
     }
 
     payload = task.get("payload", {});
     items = payload.get("items", []) if isinstance(payload, dict) else [];
     if not isinstance(items, list) or len(items) == 0 {
-        return _error_result(task_id, started, "empty_items", "payload.items must be a non-empty list");
+        return _error_result(
+            task_id, started, "empty_items", "payload.items must be a non-empty list"
+        );
     }
     for it in items {
         if not isinstance(it, dict) or "id" not in it or "text" not in it {
-            return _error_result(task_id, started, "invalid_item", "every item needs an 'id' and a 'text' field");
+            return _error_result(
+                task_id,
+                started,
+                "invalid_item",
+                "every item needs an 'id' and a 'text' field"
+            );
         }
     }
 
@@ -217,8 +245,10 @@ def run_task(task: dict[str, any]) -> dict[str, any] {
                 "peak_memory_mb": peak_mb,
                 "cpu_seconds": cpu_seconds,
                 "exit_code": 0,
+
             },
             "error": None,
+
         };
     } except Exception as e {
         return _error_result(task_id, started, "exception", str(e));
@@ -242,6 +272,7 @@ def _file_output(result: dict[str, any]) -> dict[str, any] {
     execution = result["execution"] as dict[str, any];
     file_output[RESERVED_EXECUTION_METADATA_FIELD] = {
         "runtime": str(execution["runtime"]),
+
     };
     return file_output;
 }
@@ -280,12 +311,20 @@ with entry:__main__ {
 
         if result["status"] != "ok" {
             err = result.get("error", {}) as dict[str, any];
-            print(f"connection-embedding: task failed ({err.get('code', 'unknown')}): {err.get('message', '')}");
+            print(
+                f"connection-embedding: task failed ({err.get('code', 'unknown')}): {err.get(
+                    'message', ''
+                )}"
+            );
             sys.exit(1);
         }
 
         execution = result["execution"] as dict[str, any];
-        print(f"connection-embedding: ok, runtime={execution['runtime']}, cpu_seconds={execution['cpu_seconds']}");
+        print(
+            f"connection-embedding: ok, runtime={execution['runtime']}, cpu_seconds={execution[
+                'cpu_seconds'
+            ]}"
+        );
 
         rf = open(result_path, "w");
         json.dump(_file_output(result), rf);
