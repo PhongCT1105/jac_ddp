@@ -12,3 +12,7 @@ port = 8000
 
 [dev-dependencies]
 watchdog = ">=3.0.0"
+
+[jacpack]
+name = 'jac_ddp'
+description = 'Jac IDE snapshot for jac_ddp'
