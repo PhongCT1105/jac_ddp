@@ -3,6 +3,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 JAC="$REPO_ROOT/.venv/bin/jac"
+PYTHON="$REPO_ROOT/.venv/bin/python"
 TEST_KEY="jachammer-root-test-key"
 
 fail() {
@@ -11,7 +12,10 @@ fail() {
 }
 
 [ -x "$JAC" ] || fail "missing Jac executable at $JAC"
+[ -x "$PYTHON" ] || fail "missing Python executable at $PYTHON"
 [ -f "$REPO_ROOT/jac.toml" ] || fail "missing root jac.toml"
+[ -f "$REPO_ROOT/platform/__init__.py" ] \
+    || fail "missing platform stdlib compatibility initializer"
 [ -f "$REPO_ROOT/main.jac" ] || fail "missing root main.jac"
 [ -L "$REPO_ROOT/main.jac" ] || fail "root main.jac must be a symlink"
 [ -f "$REPO_ROOT/main.sv.jac" ] || fail "missing root main.sv.jac"
@@ -23,6 +27,9 @@ fail() {
     || fail "root main.sv.jac points to an unexpected target"
 [ "$(readlink "$REPO_ROOT/src")" = "platform/coordinator/src" ] \
     || fail "root src points to an unexpected target"
+
+PYTHONPATH="$REPO_ROOT" "$PYTHON" -c \
+    'import platform; assert callable(platform.system); assert platform.system()'
 
 (
     cd "$REPO_ROOT"
