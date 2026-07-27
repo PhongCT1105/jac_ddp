@@ -4,7 +4,7 @@ name: Owen Faleolo
 ---
 Every season I can name the boys who made the top team without trying much, and I can also name the ones who came to three trainings, got benched for a game they'd been dreading, and never came back. It's the second list that keeps me up. I teach PE and coach rugby at a state school in south Auckland, and fifteen years in, the wins have blurred together while the quitters stay sharp, one by one.
 
-What I've built my coaching around isn't skill development, it's staying power — why a kid who loved the game at twelve stops wanting to be seen trying at fifteen. A few things I keep testing against every group I get:
+What I've built my coaching around isn't skill development, it's staying power — why a kid who loved the game at twelve stops wanting to be seen trying at fifteen. Here's what I'm watching for on the sideline before a boy decides he's done:
 
 - Attendance drops the week after a loss more than after a win, so that's when I need to show up at their form class, not send a text.
 - A boy who apologizes for being slow has usually been told he's slow by someone whose opinion outweighs mine, and no drill fixes that.

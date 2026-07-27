@@ -25,5 +25,5 @@ Lately I'm reading about how griot families passed down memory as structured per
 **07 — Next Pressing**
 A permanent, funded space with real hours and a second engineer, so the whole thing survives a bad month for me personally. Eventually, a small network of rooms like this one in other suburbs, run by people who came up through mine.
 
-**Outro**
-I'm hoping to find people building things meant to outlast their founders — nonprofit builders, acoustics nerds, other studio owners comparing notes on not burning out, anyone who has solved the boring parts of turning a good instinct into an institution.
+**Outro — Credits**
+Recorded and mixed in the basement in Saint-Denis, on a rule that anyone under eighteen from the block gets the room for free. No label, no catalog number, just the stairs and whoever came down them. Thanks to every kid who showed up scared of the microphone and left running the session. This one still needs: a second engineer so the place survives a bad month, a board that doesn't depend on one person's signature, and a second room in another suburb to prove the first wasn't a fluke.

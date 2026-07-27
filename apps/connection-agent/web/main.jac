@@ -22,10 +22,6 @@ cl {
         );
     }
 
-    def score_text(score: float) -> str {
-        return str(round(score, 3));
-    }
-
     def:pub app -> JsxElement {
         has visitor_name: str = "",
             profile_markdown: str = "",
@@ -126,18 +122,13 @@ cl {
         }
 
         if stage == "results" and response {
-            runtime_tag: str = response.runtime_tag;
-            fallback_mode: bool = "fallback" in runtime_tag.lower();
-            mode_label: str = (
-                "Deterministic demo ranking" if fallback_mode else "Semantic similarity"
-            );
             return
                 <main className="app-shell">
                     <a className="skip-link" href="#results-heading">Skip to results</a>
                     <header className="site-header compact-header">
                         <div className="brand-mark" aria-hidden="true">CA</div>
                         <div>
-                            <p className="eyebrow">CONNECTION AGENT · STAGE 1.5</p>
+                            <p className="eyebrow">CONNECTION AGENT</p>
                             <h1>Connection Agent</h1>
                         </div>
                     </header>
@@ -145,88 +136,27 @@ cl {
                         className="results-intro"
                         aria-labelledby="results-heading"
                     >
-                        <p className="result-kicker">{mode_label}</p>
-                        <h2 id="results-heading" tabIndex={-1}>
-                            Three fictional profiles worth exploring
-                        </h2>
-                        <p className="lede">
-                            These are fictional, non-contactable demo profiles ranked by text similarity. They are not compatibility scores, probabilities, consent, or real-person matches.
-                        </p>
-                        <div
-                            className="evidence-strip"
-                            aria-label="Completed ranking evidence"
-                        >
-                            <span>
-                                <strong>{str(response.submitted_item_count)}</strong>
-                                <small>items submitted</small>
-                            </span>
-                            <span>
-                                <strong>{str(response.recombined_item_count)}</strong>
-                                <small>items recombined</small>
-                            </span>
-                            <span>
-                                <strong>{str(response.candidate_count)}</strong>
-                                <small>fictional candidates ranked</small>
-                            </span>
-                        </div>
-                        <p className="mode-explanation">
-                            {(
-                                "This run used deterministic fallback vectors for an offline, repeatable demo. It does not claim semantic AI understanding."
-                                    if fallback_mode
-                                    else "This run used the pinned embedding model to compare semantic similarity between the text you provided and the fictional profiles."
-                            )}
+                        <p className="fictional-note">Fictional demo profiles</p>
+                        <h2 id="results-heading" tabIndex={-1}>Your top connections</h2>
+                        <p className="results-subtitle">
+                            Three people from the demo pool whose stories may give you something meaningful to talk about.
                         </p>
                     </section>
-                    <section
-                        className="result-grid"
-                        aria-label="Fictional demo ranking"
-                    >
+                    <section className="result-grid" aria-label="Top connections">
                         {[
                             <article className="result-card" key={candidate.profile_id}>
-                                <div className="card-topline">
-                                    <span className="rank-badge">
-                                        Fictional demo profile
-                                    </span>
-                                    <span
-                                        className="score"
-                                        aria-label={mode_label + " score " + score_text(
-                                            candidate.score
-                                        )}
-                                    >
-                                        {score_text(candidate.score)} text similarity
-                                    </span>
-                                </div>
                                 <h3>{candidate.name}</h3>
-                                <p className="profile-id">
-                                    Demo ID: {candidate.profile_id}
-                                </p>
-                                <p className="excerpt">{candidate.excerpt}</p>
-                                <div className="reason-block">
-                                    <h4>Why this text ranked here</h4>
-                                    <ul>
-                                        {[
-                                            <li
-                                                key={candidate.profile_id + "-reason-" + str(
-                                                    index
-                                                )}
-                                            >
-                                                {reason}
-                                            </li>
-                                            for (index, reason) in enumerate(
-                                                candidate.reasons
-                                            )
-                                        ]}
-                                    </ul>
+                                <div className="connection-explanation">
+                                    <h4>Why you might connect</h4>
+                                    <p>{candidate.explanation}</p>
                                 </div>
+                                <details className="profile-details">
+                                    <summary>View profile</summary>
+                                    <p>{candidate.excerpt}</p>
+                                </details>
                             </article> for candidate in response.matches
                         ]}
                     </section>
-                    <aside className="honesty-note" role="note">
-                        <strong>No introductions happen here.</strong>
-                        <span>
-                            The demo pool contains fictional people. There is no consent, contact, messaging, or private-chat step in this experience.
-                        </span>
-                    </aside>
                     <div className="result-actions" aria-label="Profile actions">
                         <button id="edit-profile" onClick={lambda { edit_profile(); }}>
                             Edit my profile
@@ -242,6 +172,18 @@ cl {
                     <details className="technical-details">
                         <summary>Technical evidence for this run</summary>
                         <dl>
+                            <div>
+                                <dt>Items submitted</dt>
+                                <dd>{str(response.submitted_item_count)}</dd>
+                            </div>
+                            <div>
+                                <dt>Items recombined</dt>
+                                <dd>{str(response.recombined_item_count)}</dd>
+                            </div>
+                            <div>
+                                <dt>Candidates ranked</dt>
+                                <dd>{str(response.candidate_count)}</dd>
+                            </div>
                             <div>
                                 <dt>Provider</dt>
                                 <dd>{response.provider_mode}</dd>

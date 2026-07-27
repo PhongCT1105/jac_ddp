@@ -6,7 +6,7 @@ Tuesday rehearsal note: the hall smells of floor wax and the diesel drifting up 
 
 I make dance out of the parts of a day nobody thinks to look at twice: the queue at the rank, the fourteen minutes on a minibus when everyone studiously ignores everyone else, the specific boredom of waiting that isn't boredom at all because your body is still braced for the next thing to happen. Durban traffic has taught me more about tempo than any teacher managed to.
 
-Things I keep circling back to:
+Notes I give the dancers before we run this section again:
 - rhythm that comes from infrastructure rather than music
 - how a crowd of strangers becomes briefly one shape, then scatters
 - what a borrowed, unglamorous room forces you to invent when you can't afford better

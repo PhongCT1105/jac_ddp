@@ -4,7 +4,7 @@ name: Nadia Petrosyan
 ---
 Somewhere around my third year of residency in Tbilisi I noticed the trade-off: the busier and bloodier the night, the quieter my head gets. Trauma call does that to some of us — it strips the decision down to the two or three moves that actually matter and mutes everything else. I've built a career on that quiet. Twenty years now, most of them in the same hospital, running a team that doesn't have time for my hesitation and, mercifully, never sees it.
 
-Outside the building I am, by contrast, someone who can lose forty minutes to a menu, a paint chip, or whether to take a job offer I'd already half-decided on a week ago. I've made peace with it, mostly, though a few things I keep close:
+Outside the building I am, by contrast, someone who can lose forty minutes to a menu, a paint chip, or whether to take a job offer I'd already half-decided on a week ago. I've made peace with it, mostly, though here's the discharge summary on my own indecision:
 
 - I read surgical journals for fun and travel guides for anxiety — I never book the trip
 - I'm slowly, badly, learning to sail on the Black Sea coast, mostly so someone else has to make the calls

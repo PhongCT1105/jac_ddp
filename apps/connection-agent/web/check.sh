@@ -30,7 +30,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-nohup bash -c 'exec jac start -p "$1"' bash "${smoke_port}" \
+nohup env JACGRID_USE_ST=0 CONNECTION_EXPLANATIONS_MODE=recorded \
+  jac start -p "${smoke_port}" \
   >"${server_log}" 2>&1 < /dev/null &
 server_pid=$!
 echo "Browser smoke server launched; waiting for readiness."
@@ -90,13 +91,19 @@ jac browse -s "${smoke_session}" fill '#visitor-profile' \
   'I build thoughtful software and enjoy education, community projects, distributed systems, creative tools, long walks, and conversations with curious people.' >/dev/null
 click_selector '#find-connections'
 jac browse -s "${smoke_session}" wait '#edit-profile' >/dev/null
-assert_snapshot "Three fictional profiles worth exploring"
-assert_snapshot "Deterministic demo ranking"
-assert_snapshot "fictional candidates ranked"
-assert_snapshot "They are not compatibility scores"
-assert_focus "Three fictional profiles worth exploring"
+assert_snapshot "Your top connections"
+assert_snapshot "Fictional demo profiles"
+assert_snapshot "Why you might connect"
+assert_snapshot "View profile"
+assert_focus "Your top connections"
 jac browse -s "${smoke_session}" eval \
   "document.querySelectorAll('.result-card').length" | grep -Fq '3'
+jac browse -s "${smoke_session}" eval \
+  "Array.from(document.querySelectorAll('.connection-explanation p')).every((node) => node.textContent.trim().length > 0)" \
+  | grep -Fq 'true'
+jac browse -s "${smoke_session}" eval \
+  "Array.from(document.querySelectorAll('.profile-details')).every((node) => !node.open) && !document.querySelector('.technical-details').open" \
+  | grep -Fq 'true'
 
 click_selector '#edit-profile'
 jac browse -s "${smoke_session}" eval \

@@ -2,11 +2,11 @@
 id: demo-057-jaime-bustamante
 name: Jaime Bustamante
 ---
-There's a sound a derailleur makes right before it gives up, and I can usually tell what's wrong before the owner finishes describing it. I started fixing bikes for neighbors as a teenager because it made sense faster than school did, and never really stopped. Now I run a shop in Mexico City, and every other Saturday I open the courtyard behind it for free repairs — bring your bike, your kid's bike, the one you found abandoned and want to save.
+My hands read a bike before my eyes do — a wobble in the front wheel, a chain stretched past saving, a brake pad worn down to the rivet. I started fixing bikes for neighbors as a teenager because it made sense faster than school did, and never really stopped. Now I run a shop in Mexico City, and every other Saturday I open the courtyard behind it for free repairs — bring your bike, your kid's bike, the one you found abandoned and want to save.
 
 Those afternoons taught me more about the city than the shop did. You notice who rides out of necessity versus choice, which streets people route around, whose commute got harder when a bike lane got drawn without asking them. Mobility maps who a city values, even though almost nobody says so plainly.
 
-Some things I keep circling back to:
+Enough Saturdays with my hands inside someone else's bike, and you start noticing the same three things:
 
 - Repair is a kind of literacy — once someone learns to true their own wheel, they stop being a passive owner and start being someone who can keep the thing alive.
 - Infrastructure built for "cyclists" often quietly means one kind of commuter, and everyone else becomes an afterthought.

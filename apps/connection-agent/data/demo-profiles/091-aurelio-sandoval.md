@@ -3,7 +3,7 @@ id: demo-091-aurelio-sandoval
 name: Aurelio Sandoval
 ---
 
-I have spent my life reading a piece of ground in Mendoza the way other people read a face — small changes in color, a certain droop before dawn, the way dust smells different two days before hail. That skill is still mine. What I am no longer sure of is whether the ground is still saying what it used to say. I keep the same notebook habits my grandfather kept, and half of what fills the pages now is exception rather than pattern.
+I have spent my life reading a piece of ground in Mendoza: a malbec leaf that curls in at the edges a full day before anything else on the vine shows strain, a bud that swells a week ahead of where the old calendar says it should, a bunch that loses its dull bloom and turns glassy two days before it wants to come off the vine. Small changes in color, a certain droop before dawn, the way dust smells different two days before hail. That skill is still mine. What I am no longer sure of is whether the ground is still saying what it used to say. I keep the same notebook habits my grandfather kept, and half of what fills the pages now is exception rather than pattern.
 
 Some markers from the years I count by, not by the calendar:
 

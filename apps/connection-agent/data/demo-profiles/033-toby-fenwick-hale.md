@@ -10,4 +10,4 @@ I write documents almost nobody reads. Coastal hazard assessments, adaptation pa
 
 I've become fixated on the gap between a technically correct paragraph and the one line that actually changes a vote. I interview planners and iwi liaisons who've watched policy live or die, trying to reverse-engineer what made something land — a photograph, a cost reframed as a mortgage payment, a single street's story told plainly. I don't have the formula yet. Outside work I run slow along the south coast, partly to see the erosion in person before I describe it in the abstract, partly to remember why the paragraphs matter.
 
-I want conversations with people who've turned dry technical work into something a room couldn't ignore — journalists, organisers, anyone who has made an institution actually change its mind.
+My last report had four readers who could quote a line back, by my own count, which I do not publish. Two were paid to be there. One was my mother. I've started treating this as a design flaw, not a tragedy: the next one leads with the true sentence, buries the caveats in an appendix, and drops any paragraph that stops earning its place.

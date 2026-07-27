@@ -2,7 +2,7 @@
 id: demo-078-ingeborg-bauer
 name: Ingeborg Bauer
 ---
-Two years since my last shift and I still wake at 4:40, the old briefing time, mind already sequencing arrivals that don't exist. Thirty-one years in the tower and the approach room at Vienna, mostly stacking planes over the Alps so the stack was invisible to everyone but me. People imagine shouting. It was closer to conducting — small corrections, long silences, everything mattering for exactly as long as it mattered and then gone.
+Two years since my last shift and my hands still tap out the old five-second count in any lull, the beat before keying the next instruction. Thirty-one years in the tower and the approach room at Vienna, mostly stacking planes over the Alps so the stack was invisible to everyone but me. People imagine shouting. It was closer to conducting — small corrections, long silences, everything mattering for exactly as long as it mattered and then gone.
 
 What retirement actually removed wasn't the stress. It was a particular kind of attention I haven't found a substitute for anywhere else.
 

@@ -2,7 +2,7 @@
 id: demo-090-sofia-brandao
 name: Sofia Brandão
 ---
-There is a sentence I brace for at dinner parties: "So you're building the computer that will break all encryption." My rehearsed answer is gentle and a little worn — that isn't really what my Tuesdays look like. My Tuesdays look like arguing with a colleague about whether a lattice of superconducting qubits is shedding errors fast enough to keep one logical bit alive longer than it takes to say its own name. Error correction is the unglamorous plumbing under the whole enterprise, and I've spent eight years inside the pipes.
+Ask what I do at a dinner party and you'll get the same sentence back almost every time: "So you're building the computer that will break all encryption." My rehearsed answer is gentle and a little worn — that isn't really what my Tuesdays look like. My Tuesdays look like arguing with a colleague about whether a lattice of superconducting qubits is shedding errors fast enough to keep one logical bit alive longer than it takes to say its own name. Error correction is the unglamorous plumbing under the whole enterprise, and I've spent eight years inside the pipes.
 
 I grew up outside Coimbra, where the interesting thing each week was the Saturday market. My father repaired sewing machines and radios in a shop that smelled permanently of solder, and I think that's where I got my taste for systems that fail in specific, traceable ways rather than mysterious ones.
 
@@ -12,4 +12,4 @@ The impatience shows up more with other scientists than with the public. A grant
 
 Outside the lab I row at dawn on the Tejo with a crew that has never once asked me to explain my work, and I read more military history than a physicist should admit to, mostly for the logistics — how attrition and supply lines decide outcomes that look, from a distance, like genius.
 
-What I'm hoping to find here: people who think carefully about the gap between what a field can honestly claim and what it gets credited for, others working on slow and unglamorous hard problems, and plainly, more friends who don't need the popular-science version of me.
+The metaphor I'm handed most often, on stage or at a dinner table, is a locked door — quantum computers as the master key that undoes every code humanity has ever trusted. It's vivid, and it's wrong in the specific way that bothers me most: the actual work isn't about picking locks, it's about keeping a fragile signal from dissolving into noise, syndrome by syndrome, for a few more milliseconds than last year. That gap — between the door everyone pictures and the plumbing I actually stand in — is where I'd rather stand with someone else: people who've felt their own work flatten into a convenient shorthand and chosen to stay honest about the difference anyway.

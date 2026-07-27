@@ -8,6 +8,6 @@ Every Tuesday before dawn I drive up to the weigh station outside our village, w
 
 What keeps me up most nights now isn't the wool — it's customs codes and bills of lading, which I'm learning from secondhand manuals and a retired exporter in Arequipa who still takes my calls. I want us selling directly to mills abroad instead of through middlemen who each take a cut nobody upstream agreed to. My own uncle sheared alpacas his whole life without ever knowing where the wool ended up.
 
-## What I'm Hoping to Find
+## The Distance Between the Scale and the Mill
 
-I want to talk with anyone who has built an export operation from nothing, understands textile supply chains, or has fought this same negotiation for people who deserved better terms years ago. I'm just as curious about cooperative governance elsewhere — coffee, cacao, anywhere producers organized and it held.
+Middlemen pay us eighteen soles a kilo for fiber that mills abroad resell finished near a hundred and forty. The nearest port is nine hours by truck, the nearest exporter who returns my calls six hours past that, in Arequipa. The cooperative has grown from sixty families to two hundred and eleven.

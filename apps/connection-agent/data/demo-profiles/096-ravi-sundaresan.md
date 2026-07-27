@@ -19,5 +19,4 @@ That certainty was comfortable, and I miss it more than expected. What I do now 
 - Carnatic music: my sister sings ragas I can name but cannot yet hear apart, and I want someone patient enough to explain what a trained ear does that mine does not.
 - Watercolor: I have ruined eleven sheets of good paper painting the Noyyal river at dusk, because pigment will not obey a schematic and I keep expecting it to.
 - Beekeeping: my neighbor keeps two hives and swears there is logic to how they choose a new queen. I suspect he is right, and it irritates me how much I want to understand it.
-
-I would like to talk with people who spent a working life inside zero-tolerance systems — pilots, surgeons, structural engineers — now deciding what that mind does with the decades left. I am equally glad to hear from musicians willing to explain feeling to a man who thinks in circuit diagrams, and from beginners at anything who will let an old man be one alongside them.
+- Whether I am the only one: forty years I kept trains from wanting the same stretch of track, and I have not worked out if every retired keeper of a zero-tolerance system ends up, like I have, learning a violin and a grammar and a losing chess game just to have something in his evenings with no fail-safe state — or if that is a peculiarity of one Coimbatore man with too much unscheduled time.
