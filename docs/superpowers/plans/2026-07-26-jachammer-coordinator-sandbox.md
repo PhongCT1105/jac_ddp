@@ -158,8 +158,22 @@ package namespace whose search path includes this repository's `platform/`
 directory. Do not add `platform/__init__.jac`: that would shadow the standard
 library during Jac CLI bootstrap.
 
-The service module must not include the model itself; each entrypoint includes
-the same two modules into one program namespace.
+Each entrypoint includes the same two modules for Jac's static composition.
+Jac 0.16.7 keeps included modules in separate runtime namespaces, so the
+service must also bind its sibling model symbols at runtime with a stable
+relative Python import:
+
+```jac
+import os;
+
+::py::
+from .model import *
+::py::
+```
+
+Do not use `include model;` in the service: it type-checks through an
+entrypoint but resolves as a top-level module at runtime and fails with
+`No module named 'model'`.
 
 - [ ] **Step 4: Add hosted fail-closed configuration**
 
