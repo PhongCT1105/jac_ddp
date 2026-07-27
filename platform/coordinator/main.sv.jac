@@ -776,6 +776,10 @@ walker:pub network_status {
 # ---------------------------------------------------------------------------
 
 with entry {
+    if os.environ.get("JACGRID_HOSTED", "0") == "1" {
+        assert API_KEY != "" and API_KEY != "jacgrid-dev-key",
+            "JACGRID_HOSTED=1 requires a non-development JACGRID_KEY";
+    }
     if os.environ.get("JACGRID_SELFTEST", "0") == "1" {
         print("[selftest] JacGrid coordinator");
         # same anchor the walkers use; under `jac run` this IS `root`
