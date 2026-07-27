@@ -28,7 +28,6 @@
 **Files:**
 - Create: `jac.toml`
 - Create: `main.sv.jac`
-- Create: `platform/__init__.jac`
 - Create: `platform/coordinator/src/service.jac`
 - Create: `tests/deploy/test_jachammer_root.sh`
 - Modify: `platform/coordinator/main.sv.jac`
@@ -140,13 +139,23 @@ The root entrypoint becomes:
 ```jac
 """JacGrid coordinator JacHammer entrypoint."""
 
+::py::
+import platform as _stdlib_platform
+from pathlib import Path as _Path
+_stdlib_platform.__path__ = [
+    str(_Path(__file__).resolve().parent / "platform")
+]
+::py::
+
 include platform.coordinator.src.model;
 include platform.coordinator.src.service;
 ```
 
-Create an empty `platform/__init__.jac` so the repository package takes
-precedence over Python's standard-library `platform` module when the root
-entrypoint runs.
+The inline bridge loads Python's real standard-library `platform` module
+first, preserving APIs used by Jac itself, then makes that loaded module a
+package namespace whose search path includes this repository's `platform/`
+directory. Do not add `platform/__init__.jac`: that would shadow the standard
+library during Jac CLI bootstrap.
 
 The service module must not include the model itself; each entrypoint includes
 the same two modules into one program namespace.
@@ -237,7 +246,7 @@ Expected: both commands exit 0 and print their `OK` markers.
 - [ ] **Step 9: Commit Task 1**
 
 ```bash
-git add jac.toml main.sv.jac platform/__init__.jac \
+git add jac.toml main.sv.jac \
   platform/coordinator/main.sv.jac \
   platform/coordinator/src/model.jac \
   platform/coordinator/src/service.jac \
