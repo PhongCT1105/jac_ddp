@@ -15,6 +15,10 @@ fail() {
 [ -f "$REPO_ROOT/main.sv.jac" ] || fail "missing root main.sv.jac"
 [ -L "$REPO_ROOT/main.sv.jac" ] || fail "root main.sv.jac must be a symlink"
 [ -L "$REPO_ROOT/src" ] || fail "root src must be a symlink"
+[ "$(readlink "$REPO_ROOT/main.sv.jac")" = "platform/coordinator/main.sv.jac" ] \
+    || fail "root main.sv.jac points to an unexpected target"
+[ "$(readlink "$REPO_ROOT/src")" = "platform/coordinator/src" ] \
+    || fail "root src points to an unexpected target"
 
 (
     cd "$REPO_ROOT"
