@@ -79,8 +79,10 @@ assert_focus() {
 
 jac browse -s "${smoke_session}" -v 390x844 open "http://localhost:${smoke_port}/" >/dev/null
 jac browse -s "${smoke_session}" wait '#visitor-name' >/dev/null
-assert_snapshot "Find an unexpected conversation"
-assert_snapshot "Keep sensitive information out"
+assert_snapshot "Connection Agent"
+jac browse -s "${smoke_session}" eval \
+  "!document.querySelector('.trust-row') && !document.querySelector('.privacy-notice') && !document.querySelector('footer')" \
+  | grep -Fq 'true'
 click_selector '#find-connections'
 assert_snapshot "Enter a name or nickname."
 jac browse -s "${smoke_session}" eval \
@@ -91,18 +93,16 @@ jac browse -s "${smoke_session}" fill '#visitor-profile' \
   'I build thoughtful software and enjoy education, community projects, distributed systems, creative tools, long walks, and conversations with curious people.' >/dev/null
 click_selector '#find-connections'
 jac browse -s "${smoke_session}" wait '#edit-profile' >/dev/null
-assert_snapshot "Your top connections"
-assert_snapshot "FICTIONAL DEMO PROFILES"
-assert_snapshot "WHY YOU MIGHT CONNECT"
+assert_snapshot "Your connections"
 assert_snapshot "View profile"
-assert_focus "Your top connections"
+assert_focus "Your connections"
 jac browse -s "${smoke_session}" eval \
   "document.querySelectorAll('.result-card').length" | grep -Fq '3'
 jac browse -s "${smoke_session}" eval \
-  "Array.from(document.querySelectorAll('.connection-explanation p')).every((node) => node.textContent.trim().length > 0)" \
+  "Array.from(document.querySelectorAll('.connection-explanation')).every((node) => node.textContent.trim().length > 0)" \
   | grep -Fq 'true'
 jac browse -s "${smoke_session}" eval \
-  "Array.from(document.querySelectorAll('.profile-details')).every((node) => !node.open) && !document.querySelector('.technical-details').open" \
+  "Array.from(document.querySelectorAll('.profile-details')).every((node) => !node.open) && !document.querySelector('.technical-details')" \
   | grep -Fq 'true'
 
 click_selector '#edit-profile'
@@ -118,6 +118,6 @@ jac browse -s "${smoke_session}" eval \
 
 jac browse -s "${desktop_session}" -v 1280x800 open "http://localhost:${smoke_port}/" >/dev/null
 jac browse -s "${desktop_session}" wait '#visitor-profile' >/dev/null
-jac browse -s "${desktop_session}" snapshot | grep -Fq "Find an unexpected conversation"
+jac browse -s "${desktop_session}" snapshot | grep -Fq "Connection Agent"
 
 echo "Web experience checks passed."

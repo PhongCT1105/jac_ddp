@@ -125,31 +125,20 @@ cl {
             return
                 <main className="app-shell">
                     <a className="skip-link" href="#results-heading">Skip to results</a>
-                    <header className="site-header compact-header">
+                    <header className="minimal-header">
                         <div className="brand-mark" aria-hidden="true">CA</div>
-                        <div>
-                            <p className="eyebrow">CONNECTION AGENT</p>
-                            <h1>Connection Agent</h1>
-                        </div>
+                        <h1>Connection Agent</h1>
                     </header>
-                    <section
-                        className="results-intro"
-                        aria-labelledby="results-heading"
-                    >
-                        <p className="fictional-note">Fictional demo profiles</p>
-                        <h2 id="results-heading" tabIndex={-1}>Your top connections</h2>
-                        <p className="results-subtitle">
-                            Three people from the demo pool whose stories may give you something meaningful to talk about.
-                        </p>
-                    </section>
+                    <h2 id="results-heading" className="results-heading" tabIndex={-1}>
+                        Your connections
+                    </h2>
                     <section className="result-grid" aria-label="Top connections">
                         {[
                             <article className="result-card" key={candidate.profile_id}>
                                 <h3>{candidate.name}</h3>
-                                <div className="connection-explanation">
-                                    <h4>Why you might connect</h4>
-                                    <p>{candidate.explanation}</p>
-                                </div>
+                                <p className="connection-explanation">
+                                    {candidate.explanation}
+                                </p>
                                 <details className="profile-details">
                                     <summary>View profile</summary>
                                     <p>{candidate.excerpt}</p>
@@ -159,53 +148,16 @@ cl {
                     </section>
                     <div className="result-actions" aria-label="Profile actions">
                         <button id="edit-profile" onClick={lambda { edit_profile(); }}>
-                            Edit my profile
+                            Edit profile
                         </button>
                         <button
                             id="start-over"
                             className="secondary-button"
                             onClick={lambda { start_over(); }}
                         >
-                            Start over and clear
+                            Start over
                         </button>
                     </div>
-                    <details className="technical-details">
-                        <summary>Technical evidence for this run</summary>
-                        <dl>
-                            <div>
-                                <dt>Items submitted</dt>
-                                <dd>{str(response.submitted_item_count)}</dd>
-                            </div>
-                            <div>
-                                <dt>Items recombined</dt>
-                                <dd>{str(response.recombined_item_count)}</dd>
-                            </div>
-                            <div>
-                                <dt>Candidates ranked</dt>
-                                <dd>{str(response.candidate_count)}</dd>
-                            </div>
-                            <div>
-                                <dt>Provider</dt>
-                                <dd>{response.provider_mode}</dd>
-                            </div>
-                            <div>
-                                <dt>Runtime</dt>
-                                <dd>{response.runtime_tag}</dd>
-                            </div>
-                            <div>
-                                <dt>Workload</dt>
-                                <dd>{response.workload_version}</dd>
-                            </div>
-                            <div>
-                                <dt>Corpus revision</dt>
-                                <dd>{response.corpus_revision}</dd>
-                            </div>
-                            <div>
-                                <dt>Result identity</dt>
-                                <dd>{response.result_sha256}</dd>
-                            </div>
-                        </dl>
-                    </details>
                     <p
                         className="sr-only"
                         role="status"
@@ -217,62 +169,14 @@ cl {
                 </main>;
         }
 
-        profile_count: int = len(profile_markdown);
-        profile_count_class: str = (
-            "character-count over-limit"
-                if profile_count > MAX_PROFILE_CHARS
-                else "character-count"
-        );
         return
             <main className="app-shell">
-                <a className="skip-link" href="#profile-form-heading">
-                    Skip to profile form
-                </a>
-                <header className="site-header">
+                <a className="skip-link" href="#visitor-name">Skip to profile form</a>
+                <header className="minimal-header">
                     <div className="brand-mark" aria-hidden="true">CA</div>
-                    <div>
-                        <p className="eyebrow">CONNECTION AGENT · FICTIONAL DEMO</p>
-                        <h1>Find an unexpected conversation</h1>
-                        <p className="lede">
-                            Describe yourself in your own words. We’ll compare the text with the complete current pool of fictional, non-contactable demo profiles and show three transparent rankings.
-                        </p>
-                    </div>
+                    <h1>Connection Agent</h1>
                 </header>
-                <section className="trust-row" aria-label="What this demo does">
-                    <div>
-                        <strong>01</strong>
-                        <span>You write freely</span>
-                    </div>
-                    <div>
-                        <strong>02</strong>
-                        <span>The complete current pool is compared</span>
-                    </div>
-                    <div>
-                        <strong>03</strong>
-                        <span>Three fictional results appear</span>
-                    </div>
-                </section>
-                <aside
-                    className="privacy-notice"
-                    role="note"
-                    aria-labelledby="privacy-heading"
-                >
-                    <span className="notice-icon" aria-hidden="true">!</span>
-                    <div>
-                        <h2 id="privacy-heading">Keep sensitive information out</h2>
-                        <p>
-                            Your profile is processed by the embedding service and OpenAI to create this result. Do not enter passwords, private contact details, health information, or other sensitive information. This app does not intentionally save your profile.
-                        </p>
-                    </div>
-                </aside>
-                <section className="form-card" aria-labelledby="profile-form-heading">
-                    <div className="form-heading">
-                        <p className="eyebrow">YOUR SIDE OF THE CONVERSATION</p>
-                        <h2 id="profile-form-heading">Tell the demo who you are</h2>
-                        <p>
-                            Use a nickname if you prefer. Natural writing works better than a list of keywords.
-                        </p>
-                    </div>
+                <section className="form-card" aria-label="Your profile">
                     <form
                         noValidate={True}
                         onSubmit={lambda (event: FormEvent) {
@@ -281,15 +185,7 @@ cl {
                         }}
                     >
                         <div className="field-group">
-                            <div className="label-row">
-                                <label htmlFor="visitor-name">Name or nickname</label>
-                                <span>
-                                    {str(len(visitor_name))} / {str(MAX_NAME_CHARS)}
-                                </span>
-                            </div>
-                            <p id="visitor-name-help" className="field-help">
-                                This identifies your side of the demo; a real name is not required.
-                            </p>
+                            <label htmlFor="visitor-name">Name</label>
                             <input
                                 id="visitor-name"
                                 name="visitor-name"
@@ -297,7 +193,7 @@ cl {
                                 value={visitor_name}
                                 disabled={busy}
                                 aria-invalid={True if name_error else False}
-                                aria-describedby="visitor-name-help visitor-name-error"
+                                aria-describedby="visitor-name-error"
                                 autoComplete="name"
                                 onChange={lambda (event: ChangeEvent) {
                                     visitor_name = event.target.value;
@@ -312,7 +208,6 @@ cl {
                                     className="field-error"
                                     role="alert"
                                 >
-                                    <strong>Name needs attention:</strong>{" "}
                                     {name_error}
                                 </p>
                             ]
@@ -320,17 +215,7 @@ cl {
                                 else []}
                         </div>
                         <div className="field-group">
-                            <div className="label-row">
-                                <label htmlFor="visitor-profile">
-                                    Personal profile
-                                </label>
-                                <span className={profile_count_class}>
-                                    {str(profile_count)} / {str(MAX_PROFILE_CHARS)}
-                                </span>
-                            </div>
-                            <p id="visitor-profile-help" className="field-help">
-                                Write about interests, projects, questions, values, working style, or conversations you would enjoy.
-                            </p>
+                            <label htmlFor="visitor-profile">Profile</label>
                             <textarea
                                 id="visitor-profile"
                                 name="visitor-profile"
@@ -338,8 +223,7 @@ cl {
                                 value={profile_markdown}
                                 disabled={busy}
                                 aria-invalid={True if profile_error else False}
-                                aria-describedby="visitor-profile-help visitor-profile-error profile-safety-reminder"
-                                placeholder="For example: I’m building tools for local communities, learning to cook regional food, and hoping to meet people who enjoy thoughtful experiments…"
+                                aria-describedby="visitor-profile-error"
                                 onChange={lambda (event: ChangeEvent) {
                                     profile_markdown = event.target.value;
                                     if profile_error {
@@ -347,16 +231,12 @@ cl {
                                     }
                                 }}
                             />
-                            <p id="profile-safety-reminder" className="safety-reminder">
-                                Public-demo rule: leave out sensitive or identifying details.
-                            </p>
                             {[
                                 <p
                                     id="visitor-profile-error"
                                     className="field-error"
                                     role="alert"
                                 >
-                                    <strong>Profile needs attention:</strong>{" "}
                                     {profile_error}
                                 </p>
                             ]
@@ -368,15 +248,9 @@ cl {
                             className="primary-button"
                             type="submit"
                             disabled={busy}
-                            aria-describedby="submission-explanation"
                         >
-                            {"Comparing all profiles…"
-                                if busy
-                                else "Find my connections"}
+                            {"Finding connections…" if busy else "Find connections"}
                         </button>
-                        <p id="submission-explanation" className="submit-help">
-                            Results are ranked suggestions from fictional text—not compatibility or consent.
-                        </p>
                     </form>
                     {[
                         <section
@@ -384,14 +258,9 @@ cl {
                             aria-labelledby="loading-heading"
                         >
                             <div className="spinner" aria-hidden="true"></div>
-                            <div>
-                                <h3 id="loading-heading" tabIndex={-1}>
-                                    Comparing the complete fictional pool
-                                </h3>
-                                <p>
-                                    This is an indeterminate step. Ranking starts only after the visitor profile and every profile in the current fictional pool are recombined.
-                                </p>
-                            </div>
+                            <h2 id="loading-heading" tabIndex={-1}>
+                                Finding connections…
+                            </h2>
                         </section>
                     ]
                         if stage == "loading"
@@ -402,11 +271,9 @@ cl {
                             role="alert"
                             aria-labelledby="request-error-heading"
                         >
-                            <p className="error-label">Request not completed</p>
-                            <h3 id="request-error-heading" tabIndex={-1}>
-                                Your profile is still here
-                            </h3>
-                            <p>{request_error}</p>
+                            <p id="request-error-heading" tabIndex={-1}>
+                                {request_error}
+                            </p>
                             <button
                                 id="retry-ranking"
                                 type="button"
@@ -428,13 +295,6 @@ cl {
                 >
                     {status}
                 </p>
-                <footer>
-                    <span>Fictional profiles</span>
-                    <span aria-hidden="true">·</span>
-                    <span>No account</span>
-                    <span aria-hidden="true">·</span>
-                    <span>AI explanations</span>
-                </footer>
             </main>;
     }
 }
